@@ -1,0 +1,77 @@
+,Field 75,Description
+0,account_currency,Currency that is used by your ad account.
+1,account_id,"The ID number of your ad account, which groups your advertising activity. Your ad account includes your campaigns, ads and billing. Default"
+2,account_name,"The name of your ad account, which groups your advertising activity. Your ad account includes your campaigns, ads and billing."
+3,action_values,The total value of all conversions attributed to your ads.
+4,actions,"The total number of actions people took that are attributed to your ads. Actions may include engagement, clicks or conversions."
+5,ad_id,The unique ID of the ad you're viewing in reporting. Default
+6,ad_name,The name of the ad you're viewing in reporting.
+7,adset_id,"The unique ID of the ad set you're viewing in reporting. An ad set is a group of ads that share the same budget, schedule, delivery optimization and targeting. Default"
+8,adset_name,"The name of the ad set you're viewing in reporting. An ad set is a group of ads that share the same budget, schedule, delivery optimization and targeting."
+9,attribution_setting,"The default attribution window to be used when the attribution result is calculated. Each ad set has its own attribution setting value. The attribution setting for a campaign or an account is calculated based on existing ad sets. Returns mixed, indicating multiple attribution settings, skan, indicating SKAdNetwork attribution of iOS 14 app install campaigns, and na, indicating no ad set in a campaign or account. The attribution_setting field only returns values when use_unified_attribution_setting is set to true."
+10,buying_type,"The method by which you pay for and target ads in your campaigns: through dynamic auction bidding, fixed-price bidding, or reach and frequency buying. This field is currently only visible at the campaign level."
+11,campaign_id,The unique ID number of the ad campaign you're viewing in reporting. Your campaign contains ad sets and ads. Default
+12,campaign_name,The name of the ad campaign you're viewing in reporting. Your campaign contains ad sets and ads.
+13,canvas_avg_view_percent,"The average percentage of the Instant Experience that people saw. An Instant Experience is a screen that opens after someone interacts with your ad on a mobile device. It may include a series of interactive or multimedia components, including video, images product catalog and more."
+14,canvas_avg_view_time,"The average total time, in seconds, that people spent viewing an Instant Experience. An Instant Experience is a screen that opens after someone interacts with your ad on a mobile device. It may include a series of interactive or multimedia components, including video, images product catalog and more."
+15,catalog_segment_value,The total value of all conversions from your catalog segment attributed to your ads.
+16,clicks,The number of clicks on your ads.
+17,conversion_rate_ranking,"A ranking of your ad's expected conversion rate. Your ad is ranked against ads with your optimization goal that competed for the same audience. Possible values include BELOW_AVERAGE_10, BELOW_AVERAGE_20, BELOW_AVERAGE_35, AVERAGE, ABOVE_AVERAGE, or UNKNOWN if there's not enough information about the ad. This metric is an ad relevance diagnostic and does not apply to campaigns or ad sets, only ads."
+18,conversion_values,"The total value of all conversions across all channels (i.e. website, mobile app, offline, and on-facebook) attributed to your ads. Visit the Ads Action Stats reference for a list of conversion values."
+19,conversions,"The total number of conversions across all channels (i.e. website, mobile app, offline, and on-facebook) attributed to your ads. Visit the Ads Action Stats reference for a list of conversions."
+20,converted_product_quantity,The number of products purchased which are recorded by your merchant partner's pixel or app SDK for a given product ID and driven by your ads. Has to be used together with converted product ID breakdown.
+21,converted_product_value,The value of purchases recorded by your merchant partner's pixel or app SDK for a given product ID and driven by your ads. Has to be used together with converted product ID breakdown.
+22,cost_per_action_type,The average cost of a relevant action.
+23,cost_per_conversion,"The average cost of a conversion across all channels (i.e. website, mobile app, offline, and on-facebook). Conversions include contact, customize_product, donate, find_location, schedule, start_trial, submit_application, subscribe, recurring_subscription_payment, cancel_subscription, ad_click, ad_impression."
+24,cost_per_estimated_ad_recallers,"The average cost for each estimated ad recall lift. This metric is only available for assets in the Brand awareness, Post engagement and Video views Objectives. This metric is estimated and in development."
+25,cost_per_inline_link_click,The average cost of each inline link click.
+26,cost_per_inline_post_engagement,The average cost of each inline post engagement.
+27,cost_per_outbound_click,The average cost for each outbound click.
+28,cost_per_thruplay,The average cost for each ThruPlay. This metric is in development.
+29,cost_per_unique_action_type,The average cost of each unique action. This metric is estimated.
+30,cost_per_unique_click,The average cost for each unique click (all). This metric is estimated.
+31,cost_per_unique_inline_link_click,The average cost of each unique inline link click. This metric is estimated.
+32,cost_per_unique_outbound_click,The average cost for each unique outbound click. This metric is estimated.
+33,cpc,The average cost for each click (all).
+34,cpm,"The average cost for 1,000 impressions."
+35,cpp,"The average cost to reach 1,000 people. This metric is estimated."
+36,ctr,The percentage of times people saw your ad and performed a click (all).
+37,date_start,The start date for your data. This is controlled by the date range you've selected for your reporting view. Default
+38,date_stop,The end date for your data. This is controlled by the date range you've selected for your reporting view. Default
+39,dda_results,Estimated incremental conversions caused by a given ad based on the objective and settings you selected. This is a modeled value.
+40,engagement_rate_ranking,"A ranking of your ad's expected engagement rate. Engagement includes all clicks, likes, comments and shares. Your ad is ranked against ads that competed for the same audience. Possible values include BELOW_AVERAGE_10, BELOW_AVERAGE_20, BELOW_AVERAGE_35, AVERAGE, ABOVE_AVERAGE, or UNKNOWN if there's not enough information about the ad. This metric is an ad relevance diagnostic and does not apply to campaigns or ad sets, only ads."
+41,estimated_ad_recall_rate,"The rate at which an estimated number of additional people, when asked, would remember seeing your ads within 2 days. This metric is only available for assets in the Brand awareness, Post engagement and Video views Objectives. This metric is estimated and in development."
+42,estimated_ad_recallers,"An estimate of the number of additional people who may remember seeing your ads, if asked, within 2 days. This metric is only available for assets in the Brand awareness, Post engagement and Video views Objectives. This metric is estimated and in development."
+43,frequency,The average number of times each person saw your ad. This metric is estimated.
+44,full_view_impressions,The number of Full Views on your Page's posts as a result of your ad.
+45,full_view_reach,The number of people who performed a Full View on your Page's post as a result of your ad.
+46,impressions,The number of times your ads were on screen. Default
+47,inline_link_click_ctr,The percentage of time people saw your ads and performed an inline link click.
+48,inline_link_clicks,"The number of clicks on links to select destinations or experiences, on or off Facebook-owned properties. Inline link clicks use a fixed 1-day-click attribution window."
+49,inline_post_engagement,The total number of actions that people take involving your ads. Inline post engagements use a fixed 1-day-click attribution window.
+50,instant_experience_clicks_to_open,The number of clicks on your ad that open an Instant Experience. This metric is in development.
+51,instant_experience_clicks_to_start,The number of times an interactive component in an Instant Experience starts. This metric is in development.
+52,instant_experience_outbound_clicks,The number of clicks on links in an Instant Experience that take people off Facebook-owned properties. This metric is in development.
+53,mobile_app_purchase_roas,The total return on ad spend (ROAS) from mobile app purchases. This is based on the value that you assigned when you set up the app event.
+54,objective,The objective reflecting the goal you want to achieve with your advertising. It may be different from the selected objective of the campaign in some cases.
+55,optimization_goal,The optimization goal you selected for your ad or ad set. Your optimization goal reflects what you want to optimize for the ads.
+56,outbound_clicks,The number of clicks on links that take people off Facebook-owned properties.
+57,outbound_clicks_ctr,The percentage of times people saw your ad and performed an outbound click.
+58,purchase_roas,The total return on ad spend (ROAS) from purchases. This is based on information received from one or more of your connected Facebook Business Tools and attributed to your ads.
+59,qualifying_question_qualify_answer_rate,qualifying_question_qualify_answer_rate
+60,quality_ranking,"A ranking of your ad's perceived quality. Quality is measured using feedback on your ads and the post-click experience. Your ad is ranked against ads that competed for the same audience. Possible values include BELOW_AVERAGE_10, BELOW_AVERAGE_20, BELOW_AVERAGE_35, AVERAGE, ABOVE_AVERAGE, or UNKNOWN if there's not enough information about the ad. This metric is an ad relevance diagnostic (https://www.facebook.com/help/403110480493160) and does not apply to campaigns or ad sets, only ads."
+61,reach,"The number of people who saw your ads at least once. Reach is different from impressions, which may include multiple views of your ads by the same people. This metric is estimated."
+62,social_spend,The total amount you've spent so far for your ads showed with social information. (ex: Jane Doe likes this).
+63,spend,"The estimated total amount of money you've spent on your campaign, ad set or ad during its schedule. This metric is estimated. Default"
+64,total_postbacks,The total number of postbacks received from Apple’s SKAdNetwork API. Postbacks from SKAdNetwork provide visibility into the number of app installs and post-install events that occurred. This metric is reported by a third-party API. Note: total_postbacks should not be queried with other field values. Request this metric separately from others.
+65,video_30_sec_watched_actions,"The number of times your video played for at least 30 seconds, or for nearly its total length if it's shorter than 30 seconds. For each impression of a video, we'll count video views separately and exclude any time spent replaying the video."
+66,video_avg_time_watched_actions,"The average time a video was played, including any time spent replaying the video for a single impression."
+67,video_p100_watched_actions,"The number of times your video was played at 100% of its length, including plays that skipped to this point."
+68,video_p25_watched_actions,"The number of times your video was played at 25% of its length, including plays that skipped to this point."
+69,video_p50_watched_actions,"The number of times your video was played at 50% of its length, including plays that skipped to this point."
+70,video_p75_watched_actions,"The number of times your video was played at 75% of its length, including plays that skipped to this point."
+71,video_p95_watched_actions,"The number of times your video was played at 95% of its length, including plays that skipped to this point."
+72,video_play_actions,"The number of times your video starts to play. This is counted for each impression of a video, and excludes replays. This metric is in development."
+73,video_play_curve_actions,"A video-play based curve graph that illustrates the percentage of video plays that reached a given second. Entries 0 to 14 represent seconds 0 thru 14. Entries 15 to 17 represent second ranges [15 to 20), [20 to 25), and [25 to 30). Entries 18 to 20 represent second ranges [30 to 40), [40 to 50), and [50 to 60). Entry 21 represents plays over 60 seconds."
+74,website_ctr,The percentage of times people saw your ad and performed a link click.
+75,website_purchase_roas,The total return on ad spend (ROAS) from website purchases. This is based on the value of all conversions recorded by the Facebook pixel on your website and attributed to your ads.
