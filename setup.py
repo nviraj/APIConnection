@@ -15,6 +15,10 @@ setup(
     name="APIConnection",
     version="0.1.0",
     description="APIConnection",
+    package_data={
+        # If any package contains *.txt files, include them:
+        "": ["*.csv", "*.yaml"]
+    },
     install_requires=[
         'requests==2.26.0',
         'facebook_business==11.0.0',

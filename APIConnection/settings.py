@@ -1,3 +1,6 @@
+import os 
+dir_path = os.path.dirname(os.path.realpath(__file__))
+
 # Please provide facebook access token here
 FB_ACCESS_TOKEN = ""
 FB_ACCESS_TOKEN = "EAAE7oJORpyABAI8O1s9gspwOimICRNjy6cZB2BEWHdBnZBMuJ0Ic55hZB2ZA8jFvcXLSXuDpN6fWjRBSgv9Lu5ZAcK2bkkngbvSMj1jIWOh5ymyZA18vgouX4dJIn5m263vJwoNEnQDi9iZAsZAMf0F06hrqJVc8p3fVMeQvqZA11fgZDZD"
@@ -6,7 +9,7 @@ FB_ACCESS_TOKEN = "EAAE7oJORpyABAI8O1s9gspwOimICRNjy6cZB2BEWHdBnZBMuJ0Ic55hZB2ZA
 # you need to run the program with simple auth
 TTD_AUTH_TOKEN = ""
 
-AD_INSIGHT_FIELD = "./APIConnection/config/Facebook_fields_ads_insights.csv"
+AD_INSIGHT_FIELD = f"{dir_path}/config/Facebook_fields_ads_insights.csv"
 
 
 # Path to client secrets
