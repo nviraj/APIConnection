@@ -3,7 +3,6 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Please provide facebook access token here
 FB_ACCESS_TOKEN = ""
-FB_ACCESS_TOKEN = "EAAE7oJORpyABAI8O1s9gspwOimICRNjy6cZB2BEWHdBnZBMuJ0Ic55hZB2ZA8jFvcXLSXuDpN6fWjRBSgv9Lu5ZAcK2bkkngbvSMj1jIWOh5ymyZA18vgouX4dJIn5m263vJwoNEnQDi9iZAsZAMf0F06hrqJVc8p3fVMeQvqZA11fgZDZD"
 # For trade desk, there are two ways to authorize API calls. You can
 # use either simple auth or access token. Please provide the access token here; otherwise
 # you need to run the program with simple auth
