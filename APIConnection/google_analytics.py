@@ -15,7 +15,8 @@ CLIENT_SECRETS_PATH = '/Users/giangb/projects/APIConnection/client_secret_deskto
 # VIEW_ID = '107519727'
 
 
-logging.basicConfig(filename="google_analyst.log", level=logging.DEBUG)
+# logging.basicConfig(filename="google_analyst.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
 class GoogleAnalyst:

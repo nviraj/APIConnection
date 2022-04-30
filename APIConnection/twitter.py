@@ -25,7 +25,8 @@ from .settings import (
 )
 from .exceptions import TwitterTimeout
 
-logging.basicConfig(filename="twitter.log", level=logging.DEBUG)
+# logging.basicConfig(filename="twitter.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 TIMEOUT = 100
 API_URL = "https://ads-api.twitter.com"

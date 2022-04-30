@@ -10,7 +10,8 @@ from pytrends.exceptions import ResponseError
 
 from .utils import get_last_date_of_month, convert_dates_to_timeframe
 
-logging.basicConfig(filename="google_trends.log", level=logging.DEBUG)
+# logging.basicConfig(filename="google_trends.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
 class GoogleTrends:

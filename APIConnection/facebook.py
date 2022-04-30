@@ -13,7 +13,7 @@ import pandas as pd
 from .settings import AD_INSIGHT_FIELD
 from .exceptions import FBTimeOut
 
-logging.basicConfig(filename="fb.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 TIMEOUT = 100
 FB_API_URL = "https://developers.facebook.com"
@@ -58,7 +58,11 @@ class FBConnection:
         if not os.path.exists(path):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
+        num = 0
         for acc in self.accounts:
+            num +=1
+            if num >5:
+                break
             try:
                 self.save_insight_ads_data_for_account_to_excel(
                     acc["id"], start_date, end_date, f"{path}/{acc['id']}.xls", fields

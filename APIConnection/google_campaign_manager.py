@@ -20,7 +20,8 @@ from oauth2client import tools
 from .settings import GOOGLE_COMPAIGN_MANAGER_REPORT, GOOGLE_CLIENT_SECRET
 from . import dfareporting_utils
 
-logging.basicConfig(filename="google_campaign_manager.log", level=logging.DEBUG)
+# logging.basicConfig(filename="google_campaign_manager.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 SUCCESS = True
 FAIL = False

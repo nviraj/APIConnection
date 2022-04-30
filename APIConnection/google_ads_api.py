@@ -12,7 +12,8 @@ from .settings import GOOGLE_ADS_YAML, GOOGLE_ADS_FIELDS
 QUERY_TABLE = "campaign"
 FILTER_FIELD = "segments.date"
 
-logging.basicConfig(filename="google_ads.log", level=logging.DEBUG)
+# logging.basicConfig(filename="google_ads.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
 class GoogleAds:

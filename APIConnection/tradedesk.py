@@ -7,7 +7,8 @@ import pandas as pd
 
 # from .exceptions import FBTimeOut
 
-logging.basicConfig(filename="ttd.log", level=logging.DEBUG)
+# logging.basicConfig(filename="ttd.log", level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 TIMEOUT = 1000
 TTD_API_URL = "https://api.thetradedesk.com"

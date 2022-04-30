@@ -22,10 +22,10 @@ sys.path.insert(0, os.path.abspath(".."))
 from APIConnection.config import dv360_config
 from APIConnection.logger import get_logger
 
-logger = get_logger(
-    "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
-)
-
+# logger = get_logger(
+#     "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
+# )
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 class DV360(object):
     _API_NAME = "displayvideo"
