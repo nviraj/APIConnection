@@ -30,8 +30,11 @@ class FBConnection:
         self.accounts = list(user.get_ad_accounts())
 
     def get_sub_accounts(self):
-        return self.accounts
-
+        ans = []
+        for acc in self.accounts:
+           ans.append(acc["id"])
+        return ans
+    
     @staticmethod
     def get_ads_insights_reference_url():
         return f"{FB_API_URL}/docs/marketing-api/reference/ads-insights/"
