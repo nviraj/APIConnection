@@ -29,6 +29,9 @@ class FBConnection:
         user = User(fbid="me")
         self.accounts = list(user.get_ad_accounts())
 
+    def get_sub_accounts(self):
+        return self.accounts
+
     @staticmethod
     def get_ads_insights_reference_url():
         return f"{FB_API_URL}/docs/marketing-api/reference/ads-insights/"

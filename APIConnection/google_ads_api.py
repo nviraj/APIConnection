@@ -31,6 +31,9 @@ class GoogleAds:
             GOOGLE_ADS_YAML, self.main_manager_account
         )
 
+    def get_sub_accounts(self):
+        return self.all_child_acc(self.googleads_client)
+
     def _change_customer_id_yaml(self, yaml_file, customer):
         with open(yaml_file, "r") as yaml:
             lines = yaml.readlines()
