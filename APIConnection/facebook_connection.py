@@ -3,14 +3,15 @@ import os
 import errno
 import time
 import logging
-
+from typing import List
+from facebook import GraphAPI
 from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.adreportrun import AdReportRun
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.user import User
 import pandas as pd
-from .settings import AD_INSIGHT_FIELD
+from .settings import AD_INSIGHT_FIELD, FB_ACCESS_TOKEN
 from .exceptions import FBTimeOut
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -26,15 +27,20 @@ class FBConnection:
     def __init__(self, access_token=None):
         self.access_token = access_token
         FacebookAdsApi.init(access_token=access_token)
-        user = User(fbid="me")
-        self.accounts = list(user.get_ad_accounts())
+        self.user = User(fbid="me")
+        self.accounts = list(self.user.get_ad_accounts())
 
-    def get_sub_accounts(self):
+    def get_sub_accounts(self) -> List[str]:
+        """
+        Get all list id of sub accounts
+        Returns:
+
+        """
         ans = []
         for acc in self.accounts:
-           ans.append(acc["id"])
+            ans.append(acc["id"])
         return ans
-    
+
     @staticmethod
     def get_ads_insights_reference_url():
         return f"{FB_API_URL}/docs/marketing-api/reference/ads-insights/"
@@ -47,7 +53,7 @@ class FBConnection:
         return [field for field in fields if field not in EXCLUDE_FB_ACC_INSIGHT_FIELDS]
 
     def save_insight_ads_accounts_to_excel(
-        self, start_date, end_date, path="./", fields=None
+            self, start_date, end_date, path="./", fields=None
     ):
         """Save insight ads data to excel files
 
@@ -66,8 +72,8 @@ class FBConnection:
 
         num = 0
         for acc in self.accounts:
-            num +=1
-            if num >5:
+            num += 1
+            if num > 5:
                 break
             try:
                 self.save_insight_ads_data_for_account_to_excel(
@@ -81,7 +87,7 @@ class FBConnection:
                 )
 
     def get_insight_ads_data_for_account(
-        self, ad_account_id, start_date, end_date, fields
+            self, ad_account_id, start_date, end_date, fields
     ):
         """Fetch insight ads data for an account account
 
@@ -110,7 +116,7 @@ class FBConnection:
         return [item for item in result_cursor]
 
     def save_insight_ads_data_for_account_to_excel(
-        self, ad_account_id, start_date, end_date, file_path, fields=None
+            self, ad_account_id, start_date, end_date, file_path, fields=None
     ):
         """Save insight ads data to excel file
 
@@ -142,3 +148,22 @@ class FBConnection:
             status = job[AdReportRun.Field.async_status]
             if status == "Job Completed":
                 return job.get_result()
+
+    def extract_connection_info(self):
+        graph = GraphAPI(self.access_token)
+        user_info = graph.get_object("me", fields="id,name,email")
+        data = {
+            "business_account": user_info.get("email", ""),
+            "num_sub_account": len(self.get_sub_accounts()),
+            "business_account_id": user_info.get("id", "")
+        }
+        return data
+
+
+# if __name__ == "__main__":
+#     conn = FBConnection(access_token=FB_ACCESS_TOKEN)
+#     print(conn.extract_connection_info())
+#     # user = conn.user.
+    # print(conn.user.get_ad_accounts(
+    #     fields=[AdAccount.Field.name, AdAccount.Field.account_id, AdAccount.Field.account_status])
+    # }
