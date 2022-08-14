@@ -4,7 +4,7 @@ sys.path.append(".")
 
 
 def run_fb(args):
-    from APIConnection.facebook import FBConnection
+    from APIConnection.facebook_connection import FBConnection
     from APIConnection.settings import FB_ACCESS_TOKEN
 
     conn = FBConnection(access_token=FB_ACCESS_TOKEN)

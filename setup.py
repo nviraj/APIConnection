@@ -70,7 +70,8 @@ setup(
         'yarl==1.6.3',
         'us==2.0.2',
         'pytrends==4.7.3',
-        'twitter-ads==10.0.0'
+        'twitter-ads==10.0.0',
+        'facebook-sdk==3.1.0'
     ],
     long_description=readme,
     author="Giang Bui",

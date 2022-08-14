@@ -1,4 +1,4 @@
-from .. import facebook
+from .. import facebook_connection
 
 import flask
 blueprint = flask.Blueprint("facebook", __name__)
