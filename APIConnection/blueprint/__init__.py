@@ -1,6 +1,6 @@
 
 import flask
-from .. import facebook as fb
+from .. import facebook_connection as fb
 from ..settings import FB_ACCESS_TOKEN
 # from ..exceptions import MissingArgumentException
 from flask import jsonify
