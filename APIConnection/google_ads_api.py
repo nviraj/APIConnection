@@ -2,6 +2,7 @@
 import argparse
 import sys
 import logging
+from typing import Dict
 
 import pandas as pd
 from google.ads.googleads.client import GoogleAdsClient
@@ -145,8 +146,8 @@ class GoogleAds:
                         # prevent visiting the same customer many times, we
                         # need to check if it's already in the Dictionary.
                         if (
-                            customer_client.id not in customer_ids_to_child_accounts
-                            and customer_client.level == 1
+                                customer_client.id not in customer_ids_to_child_accounts
+                                and customer_client.level == 1
                         ):
                             unprocessed_customer_ids.append(customer_client.id)
 
@@ -180,13 +181,13 @@ class GoogleAds:
         """pull and save data to csv"""
 
         def _build_query(
-            SELECT=list,
-            FROM=str,
-            WHERE=str,
-            START_DATE=str,
-            END_DATE=str,
-            ORDER=str,
-            DESC=True,
+                SELECT=list,
+                FROM=str,
+                WHERE=str,
+                START_DATE=str,
+                END_DATE=str,
+                ORDER=str,
+                DESC=True,
         ):
             query = "\n    SELECT\n"
             for metric in SELECT:
@@ -241,7 +242,7 @@ class GoogleAds:
         search_request.query = query
         response = ga_service.search_stream(search_request)
         query_list = query.strip().split()
-        metrics = query_list[1 : query_list.index("FROM")]
+        metrics = query_list[1: query_list.index("FROM")]
         all_data = []
         for batch in response:
             for row in batch.results:
@@ -259,5 +260,27 @@ class GoogleAds:
         df = pd.DataFrame(all_data)
         return df
 
+    def extract_connection_info(self) -> Dict:
+        """
+        Get connection info of googleads account
+        """
+        query = """
+        SELECT
+            customer.id,
+            customer.email,
+        FROM customer
+        LIMIT 1"""
+        request = self.googleads_client.get_type("SearchGoogleAdsRequest")
+        request.customer_id = self.main_manager_account
+        request.query = query
+        response = self.googleads_service.search(request=request)
+        customer = list(response)[0].customer
+        print(customer)
+        data = {
+            "business_account": "",
+            "num_sub_account": len(self.get_sub_accounts()),
+            "business_account_id": ""
+        }
+        return data
 
 # create a for loop for each customer and change the yaml file
