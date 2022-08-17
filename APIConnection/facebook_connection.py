@@ -32,7 +32,7 @@ class FBConnection:
 
     def get_sub_accounts(self) -> List[str]:
         """
-        Get all list id of sub accounts
+        Get all list id of subaccounts
         Returns:
 
         """
@@ -53,7 +53,7 @@ class FBConnection:
         return [field for field in fields if field not in EXCLUDE_FB_ACC_INSIGHT_FIELDS]
 
     def save_insight_ads_accounts_to_excel(
-            self, start_date, end_date, path="./", fields=None
+        self, start_date, end_date, path="./", fields=None, subaccount_ids=None
     ):
         """Save insight ads data to excel files
 
@@ -62,29 +62,28 @@ class FBConnection:
             end_date (str): string format of 'YYYY-MM-DD'
             path (str): path or directory
             fields (list(str)): fields list
-
+            subaccount_ids:
         Returns:
             None
         """
 
+        if subaccount_ids is None:
+            subaccount_ids = self.get_sub_accounts()
         if not os.path.exists(path):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
-        num = 0
-        for acc in self.accounts:
-            num += 1
-            if num > 5:
-                break
-            try:
-                self.save_insight_ads_data_for_account_to_excel(
-                    acc["id"], start_date, end_date, f"{path}/{acc['id']}.xls", fields
-                )
-            except FBTimeOut:
-                logging.error(f"TIMEOUT: Can not get data for account {acc['id']}")
-            except Exception as e:
-                logging.error(
-                    f"ERROR: Can not get data for account {acc['id']}. Detail {e}"
-                )
+        for id in subaccount_ids:
+            if id in self.get_sub_accounts():
+                try:
+                    self.save_insight_ads_data_for_account_to_excel(
+                        id, start_date, end_date, f"{path}/{id}.xls", fields
+                    )
+                except FBTimeOut:
+                    logging.error(f"TIMEOUT: Can not get data for account {id}")
+                except Exception as e:
+                    logging.error(
+                        f"ERROR: Can not get data for account {id}. Detail {e}"
+                    )
 
     def get_insight_ads_data_for_account(
             self, ad_account_id, start_date, end_date, fields
@@ -160,10 +159,8 @@ class FBConnection:
         return data
 
 
-# if __name__ == "__main__":
-#     conn = FBConnection(access_token=FB_ACCESS_TOKEN)
-#     print(conn.extract_connection_info())
-#     # user = conn.user.
-    # print(conn.user.get_ad_accounts(
-    #     fields=[AdAccount.Field.name, AdAccount.Field.account_id, AdAccount.Field.account_status])
-    # }
+if __name__ == "__main__":
+    conn = FBConnection(access_token=FB_ACCESS_TOKEN)
+    conn.save_insight_ads_accounts_to_excel(
+        start_date="2022-08-01", end_date="2022-08-02", subaccount_ids=["act_20862274"]
+    )
