@@ -135,3 +135,11 @@ class TTDConnection:
                 f.write(str(response.content.decode("utf-8")))
         except Exception as e:
             logging.error(f"ERROR: can not download {url}. Details {e}")
+
+    def extract_connection_info(self):
+        data = {
+            "business_account": self.username,
+            "num_sub_account": 0,
+            "business_account_id": None
+        }
+        return data

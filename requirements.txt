@@ -50,3 +50,4 @@ us==2.0.2
 pytrends==4.7.3
 twitter-ads==10.0.0
 facebook-sdk==3.1.0
+tweepy==4.10.0

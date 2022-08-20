@@ -3,12 +3,14 @@ import os
 import errno
 import time
 import logging
-from typing import DefaultDict
+from pprint import pprint
+from typing import DefaultDict, List
 import requests
 import datetime
 from collections import defaultdict
 
 import pandas as pd
+import tweepy
 from twitter_ads import API_VERSION
 from twitter_ads import campaign
 from twitter_ads.client import Client
@@ -41,20 +43,38 @@ placement = [PLACEMENT.ALL_ON_TWITTER, PLACEMENT.PUBLISHER_NETWORK]
 class TwitterConnection:
     """Wrapper class for fetching/parsing Twitter endpoints"""
 
-    def __init__(self, accounts=TWITTER_ACCOUNTS):
+    def __init__(
+            self,
+            key: str = TWITTER_CONSUMER_KEY,
+            secret: str = TWITTER_CONSUMER_SECRET,
+            token: str = TWITTER_ACCESS_TOKEN,
+            token_secret: str = TWITTER_ACCESS_TOKEN_SECRET,
+            accounts: List[str] = TWITTER_ACCOUNTS
+    ):
+        self.consumer_key = key
+        self.secret = secret
+        self.token = token
+        self.token_secret = token_secret
         # initialize the client
         self.client = Client(
-            TWITTER_CONSUMER_KEY,
-            TWITTER_CONSUMER_SECRET,
-            TWITTER_ACCESS_TOKEN,
-            TWITTER_ACCESS_TOKEN_SECRET,
+            self.consumer_key,
+            self.secret,
+            self.token,
+            self.token_secret
         )
         self.accounts = accounts
+        self.user_api = self.tw_user_api()
 
-    def _get_bearer_token(self, key, secret):
+    def tw_user_api(self):
+        auth = tweepy.OAuthHandler(self.consumer_key, self.secret)
+        auth.set_access_token(self.token, self.token_secret)
+        api = tweepy.API(auth)
+        return api
+
+    def _get_bearer_token(self) -> str:
         response = requests.post(
             "https://api.twitter.com/oauth2/token",
-            auth=(key, secret),
+            auth=(self.consumer_key, self.secret),
             data={"grant_type": "client_credentials"},
         )
 
@@ -67,10 +87,10 @@ class TwitterConnection:
         body = response.json()
         return body["access_token"]
 
-    def get_accounts(self, token):
+    def get_accounts(self):
         url = f"{API_URL}/{API_VERSION}/accounts/"
-        print(token)
-        response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
+        response = requests.get(url,
+                                headers={"Authorization": f"Bearer {self._get_bearer_token()}"})
 
         if response.status_code != 200:
             raise Exception(
@@ -79,9 +99,17 @@ class TwitterConnection:
             )
 
         body = response.json(
-            10,
+            # 10
         )
         return body
+
+    def get_ad_accounts_ids(self) -> List[str]:
+        """
+
+        Returns: list of ad account id
+
+        """
+        return [acc.id for acc in list(self.client.accounts())]
 
     def save_insight_ads_accounts_to_excel(self, start_date, end_date, output_dir="./"):
         """Save insight ads data to excel files
@@ -110,7 +138,7 @@ class TwitterConnection:
                 raise e
 
     def save_insight_ads_data_for_account_to_excel(
-        self, account_id, start_date, end_date, file_path
+            self, account_id, start_date, end_date, file_path
     ):
         """Save insight ads data to excel file
 
@@ -171,7 +199,7 @@ class TwitterConnection:
                     row["Result type"] = "Tweet engagements"
 
                 row["Result rate"] = (
-                    100 * row["Results"] / (1.0e-6 + row["Impressions"])
+                        100 * row["Results"] / (1.0e-6 + row["Impressions"])
                 )
                 row["Result rate type"] = (
                     row["Result type"] + " rate" if "Result type" in row else ""
@@ -232,7 +260,7 @@ class TwitterConnection:
         analytics_data = []
         while start < end:
             for row in self._fetch_line_item_data(
-                account, ids, start, start + datetime.timedelta(hours=24)
+                    account, ids, start, start + datetime.timedelta(hours=24)
             ):
                 row["time_period"] = start
                 analytics_data.append(row)
@@ -271,3 +299,12 @@ class TwitterConnection:
                 logging.error(e)
                 raise e
         return sync_data
+
+    def extract_connection_info(self):
+        user = self.tw_user_api().verify_credentials()
+        data = {
+            "business_account": user.name,
+            "num_sub_account": len(self.get_ad_accounts_ids()),
+            "business_account_id": user.id
+        }
+        return data
