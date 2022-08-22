@@ -1,4 +1,6 @@
 import logging
+from pprint import pprint
+from typing import List, Dict, Any, Optional
 
 import httplib2
 import pandas as pd
@@ -15,7 +17,8 @@ SCOPES = [
     # "https://www.googleapis.com/auth/analytics.edit",
     "https://www.googleapis.com/auth/analytics.readonly"
 ]
-CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'  # Path to client_secrets.json file.
+# CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'
+CLIENT_SECRETS_PATH = 'C:\\Users\\Admin\\Desktop\\APIConnection\\ga_quybulu.json'
 # VIEW_ID = '107519727'
 
 
@@ -26,17 +29,21 @@ logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 class GoogleAnalyst:
     """Wrapper class for fetching/parsing GoogleAnalyst endpoints"""
 
-    def __init__(self):
+    def __init__(self, connection_id: Optional[str]):
         self.client = client.flow_from_clientsecrets(
             CLIENT_SECRETS_PATH, scope=SCOPES,
             message=tools.message_if_missing(CLIENT_SECRETS_PATH)
         )
+        self.cached_credential_path = (
+            f"{connection_id}_analyticsreporting.dat" if connection_id else "analyticsreporting.dat"
+        )
 
     def get_summaries(self):
-        storage = file.Storage('analyticsreporting.dat')
+        storage = file.Storage(self.cached_credential_path)
         credentials = storage.get()
         if credentials is None or credentials.invalid:
             credentials = tools.run_flow(self._flow, storage)
+        print("test")
         http = credentials.authorize(http=httplib2.Http())
         analytics = build('analytics', 'v3', http=http)
         return analytics.management().accountSummaries().list().execute()
@@ -54,7 +61,7 @@ class GoogleAnalyst:
         # If the credentials don't exist or are invalid run through the native client
         # flow. The Storage object will ensure that if successful the good
         # credentials will get written back to a file.
-        storage = file.Storage('analyticsreporting.dat')
+        storage = file.Storage(self.cached_credential_path)
         credentials = storage.get()
         if credentials is None or credentials.invalid:
             credentials = tools.run_flow(self._flow, storage)
@@ -63,13 +70,13 @@ class GoogleAnalyst:
         analytics = build('analyticsreporting', 'v4', http=http)
         return analytics
 
-    def get_report(self, viewID, start_date, end_date):
+    def get_report(self, view_id, start_date, end_date):
         # Use the Analytics Service Object to query the Analytics Reporting API V4.
         data_all = self._analytics.reports().batchGet(
             body={
                 'reportRequests': [
                     {
-                        'viewId': viewID,
+                        'viewId': view_id,
                         #  'dateRanges': [{'startDate': '7daysAgo', 'endDate': 'today'}],
                         'dateRanges': [{'startDate': start_date, 'endDate': end_date}],
                         'dimensions': [{'name': 'ga:sourceMedium'}],
@@ -101,12 +108,16 @@ class GoogleAnalyst:
 
         return df
 
-    def save_data_to_csv(self, viewID, start_date, end_date, dir="./"):
-        df_main = self.get_report(viewID, start_date, end_date)
-        filename = f"{dir}/{viewID}_{start_date}-{end_date}.csv"
+    def save_data_to_csv(self, view_id, start_date, end_date, dir="./"):
+        df_main = self.get_report(view_id, start_date, end_date)
+        filename = f"{dir}/{view_id}_{start_date}-{end_date}.csv"
         df_main.to_csv(filename, index=False)
 
-    def extract_connection_info(self):
+    def get_sub_account(self) -> List[str]:
+        user_summeries = self.get_summaries()
+        return [account["id"] for account in user_summeries["items"]]
+
+    def extract_connection_info(self) -> Dict[str, Any]:
         user_summeries = self.get_summaries()
         data = {
             "business_account": user_summeries.get("username", ""),
@@ -120,7 +131,8 @@ class GoogleAnalyst:
 
 if __name__ == "__main__":
     ga = GoogleAnalyst()
-    print(ga.extract_connection_info())
+    pprint(ga.get_summaries())
+    # print(ga.extract_connection_info())
     # ga.save_data_to_csv(viewID="")
 
     # from google_auth_oauthlib.flow import InstalledAppFlow
