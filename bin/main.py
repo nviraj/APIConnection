@@ -1,5 +1,6 @@
-import sys
 import argparse
+import sys
+
 sys.path.append(".")
 
 
@@ -98,11 +99,13 @@ def run_google_trends(args):
         args.keyword, args.start_date, args.end_date
     )
 
+
 def run_google_analyst(args):
     from APIConnection.google_analytics import GoogleAnalyst
 
     google_analyst = GoogleAnalyst()
     google_analyst.save_data_to_csv(args.viewid, args.start_date, args.end_date)
+
 
 if __name__ == "__main__":
     main_parser = argparse.ArgumentParser()
@@ -287,7 +290,6 @@ if __name__ == "__main__":
         help="The end date (YYYY-MM-DD) to get the report",
     )
     parser_twitter.set_defaults(func=twitter)
-
 
     # Google Analyst
     parser_google_analyst = service_subparsers.add_parser(
