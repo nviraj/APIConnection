@@ -1,40 +1,35 @@
 # -*- coding: utf-8 -*-
-import os
-import errno
-import time
-import logging
-from pprint import pprint
-from typing import DefaultDict, List
-import requests
 import datetime
+import errno
+import logging
+import os
 from collections import defaultdict
+from typing import List, Dict
 
 import pandas as pd
+import requests
 import tweepy
 from twitter_ads import API_VERSION
-from twitter_ads import campaign
-from twitter_ads.client import Client
 from twitter_ads.campaign import Campaign
+from twitter_ads.client import Client
 from twitter_ads.enum import METRIC_GROUP, GRANULARITY, PLACEMENT
 from twitter_ads.utils import split_list
 
-from .settings import (
+from exceptions import TwitterTimeout
+from settings import (
     TWITTER_ACCESS_TOKEN,
     TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET,
     TWITTER_ACCESS_TOKEN_SECRET,
-    TWITTER_ACCOUNTS,
 )
-from .exceptions import TwitterTimeout
 
 # logging.basicConfig(filename="twitter.log", level=logging.DEBUG)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 TIMEOUT = 100
 API_URL = "https://ads-api.twitter.com"
-API_VERSION = "10"
 MAX_HANDLING_IDENTITIES = 20
-METRIC_GROUPS = [METRIC_GROUP.ENGAGEMENT, METRIC_GROUP.BILLING, METRIC_GROUP.VIDEO]
+DEFAULT_METRIC_GROUPS = [METRIC_GROUP.ENGAGEMENT, METRIC_GROUP.BILLING, METRIC_GROUP.VIDEO]
 
 granularity = GRANULARITY.DAY
 placement = [PLACEMENT.ALL_ON_TWITTER, PLACEMENT.PUBLISHER_NETWORK]
@@ -48,8 +43,7 @@ class TwitterConnection:
             key: str = TWITTER_CONSUMER_KEY,
             secret: str = TWITTER_CONSUMER_SECRET,
             token: str = TWITTER_ACCESS_TOKEN,
-            token_secret: str = TWITTER_ACCESS_TOKEN_SECRET,
-            accounts: List[str] = TWITTER_ACCOUNTS
+            token_secret: str = TWITTER_ACCESS_TOKEN_SECRET
     ):
         self.consumer_key = key
         self.secret = secret
@@ -62,7 +56,7 @@ class TwitterConnection:
             self.token,
             self.token_secret
         )
-        self.accounts = accounts
+        self.accounts = self.get_ad_accounts_ids()
         self.user_api = self.tw_user_api()
 
     def tw_user_api(self):
@@ -86,6 +80,10 @@ class TwitterConnection:
 
         body = response.json()
         return body["access_token"]
+
+    @staticmethod
+    def get_supported_metrics_group():
+        return [name for name in dir(METRIC_GROUP) if not name.startswith('_')]
 
     def get_accounts(self):
         url = f"{API_URL}/{API_VERSION}/accounts/"
@@ -111,14 +109,15 @@ class TwitterConnection:
         """
         return [acc.id for acc in list(self.client.accounts())]
 
-    def save_insight_ads_accounts_to_excel(self, start_date, end_date, output_dir="./"):
+    def save_insight_ads_accounts_to_excel(self, start_date, end_date, metrics_group,
+                                           output_dir="./"):
         """Save insight ads data to excel files
 
         Args:
             start_date (str): string format of 'YYYY-MM-DD'
             end_date (str): string format of 'YYYY-MM-DD'
             output_dir (str): output dir
-
+            metrics_group
         Returns:
             None
         """
@@ -129,33 +128,16 @@ class TwitterConnection:
         for acc in self.accounts:
             try:
                 self.save_insight_ads_data_for_account_to_excel(
-                    acc, start_date, end_date, f"{output_dir}/{acc}.xls"
+                    acc, start_date, end_date, metrics_group, f"{output_dir}/{acc}.xls"
                 )
             except TwitterTimeout:
-                logging.error(f"TIMEOUT: Can not get data for account {acc['id']}")
+                logging.error(f"TIMEOUT: Can not get data for account {acc}")
             except Exception as e:
                 logging.error(f"ERROR: Can not get data for account {acc}. Detail {e}")
                 raise e
 
-    def save_insight_ads_data_for_account_to_excel(
-            self, account_id, start_date, end_date, file_path
-    ):
-        """Save insight ads data to excel file
-
-        Args:
-            account_id (str): account ID
-            start_date (str): string format of 'YYYY-MM-DD'
-            end_date (str): string format of 'YYYY-MM-DD'
-            file_path (str): path or directory
-
-        Returns:
-            None
-        """
-        logging.info(f"Start processing account {account_id}")
-        campaign_data, analytics_data = self.fetch_analytic_data_for_account(
-            start_date, end_date
-        )
-
+    @staticmethod
+    def convert_analysis_data_to_df(campaign_data: Dict, analytics_data: Dict) -> pd.DataFrame:
         res = []
         for data in analytics_data:
             row = {}
@@ -164,6 +146,7 @@ class TwitterConnection:
                 metrics = data["id_data"][0]["metrics"]
                 row["Time period"] = data["time_period"]
                 row["Campaign name"] = campaign_data[id]["name"]
+
                 if campaign_data[id]["objective"] == "VIDEO_VIEWS":
                     row["Objective"] = "Video views"
                 elif campaign_data[id]["objective"] == "CUSTOM":
@@ -172,6 +155,7 @@ class TwitterConnection:
                     row["Objective"] = "Engagements"
                 elif campaign_data[id]["objective"] == "WEBSITE_CLICKS":
                     row["Objective"] = "Website clicks"
+
                 row["Status"] = campaign_data[id]["status"]
                 row["Account name"] = campaign_data[id]["account_name"]
                 row["Campaign start"] = campaign_data[id]["start_time"]
@@ -190,13 +174,15 @@ class TwitterConnection:
                 row["Results"] = (
                     sum(metrics["url_clicks"]) if metrics["url_clicks"] else 0
                 )
-
-                if row["Objective"] == "Website clicks":
-                    row["Result type"] = "Link clicks"
-                elif row["Objective"] == "Video views":
-                    row["Result type"] = "Video views"
-                elif row["Objective"] in ["Engagements", "Custom"]:
-                    row["Result type"] = "Tweet engagements"
+                if "Objective" in row:
+                    if row["Objective"] == "Website clicks":
+                        row["Result type"] = "Link clicks"
+                    elif row["Objective"] == "Video views":
+                        row["Result type"] = "Video views"
+                    elif row["Objective"] in ["Engagements", "Custom"]:
+                        row["Result type"] = "Tweet engagements"
+                else:
+                    row["Result type"] = ""
 
                 row["Result rate"] = (
                         100 * row["Results"] / (1.0e-6 + row["Impressions"])
@@ -216,21 +202,56 @@ class TwitterConnection:
                 raise e
 
         df_insight = pd.DataFrame.from_dict(res)
+        return df_insight
+
+    def save_insight_ads_data_for_account_to_df(
+            self, account_id, start_date, end_date, metrics_group
+    ) -> pd.DataFrame:
+        campaign_data, analytics_data = self.fetch_analytic_data_for_account(
+            account_id, start_date, end_date, metrics_group
+        )
+        df = self.convert_analysis_data_to_df(campaign_data, analytics_data)
+        df["account_id"] = account_id
+        return df
+
+    def save_insight_ads_data_for_account_to_excel(
+            self, account_id, start_date, end_date, metrics_group, file_path
+    ):
+        """Save insight ads data to excel file
+
+        Args:
+            account_id (str): account ID
+            start_date (str): string format of 'YYYY-MM-DD'
+            end_date (str): string format of 'YYYY-MM-DD'
+            metrics_group :
+            file_path:
+
+        Returns:
+            None
+        """
+        logging.info(f"Start processing account {account_id}")
+        campaign_data, analytics_data = self.fetch_analytic_data_for_account(
+            account_id, start_date, end_date, metrics_group
+        )
+        df_insight = self.convert_analysis_data_to_df(campaign_data, analytics_data)
         df_insight.to_excel(file_path, index=False, merge_cells=True)
 
-    def fetch_analytic_data_for_account(self, start_date, end_date):
+    def fetch_analytic_data_for_account(
+            self, account_id: str, start_date: str, end_date: str,
+            metrics_group: List[str] = DEFAULT_METRIC_GROUPS
+    ):
         """Fetch insight ads data for an account account
 
         Args:
             account_id (str): account ID
             start_date (str): string format of 'YYYY-MM-DD'
             end_date (str): string format of 'YYYY-MM-DD'
-            fields (list(str)): fields list
+            metrics_group (list(str)): fields list
 
         Returns:
             (:obj: `list`)
         """
-        account = self.client.accounts(TWITTER_ACCOUNTS[0])
+        account = self.client.accounts(account_id)
         campaign_data = defaultdict(dict)
 
         for campaign in account.campaigns():
@@ -254,13 +275,13 @@ class TwitterConnection:
 
         ids = list(map(lambda x: x.id, account.campaigns()))
 
-        start = datetime.datetime.strptime(start_date, "%Y/%m/%d")
-        end = datetime.datetime.strptime(end_date, "%Y/%m/%d")
+        start = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.datetime.strptime(end_date, "%Y-%m-%d")
 
         analytics_data = []
         while start < end:
             for row in self._fetch_line_item_data(
-                    account, ids, start, start + datetime.timedelta(hours=24)
+                    account, ids, start, start + datetime.timedelta(hours=24), metrics_group
             ):
                 row["time_period"] = start
                 analytics_data.append(row)
@@ -268,7 +289,7 @@ class TwitterConnection:
 
         return campaign_data, analytics_data
 
-    def _fetch_line_item_data(self, account, ids, start, end):
+    def _fetch_line_item_data(self, account, ids, start_date, end_date, metrics_group):
         """
         Fetch analytics data
 
@@ -284,8 +305,8 @@ class TwitterConnection:
         kwargs = {
             "granularity": granularity,
             "placement": placement,
-            "start_time": start,
-            "end_time": end,
+            "start_time": start_date,
+            "end_time": end_date,
         }
         sync_data = []
         # Sync/Async endpoint can handle max 20 entity IDs per request
@@ -293,7 +314,7 @@ class TwitterConnection:
         for chunk_ids in split_list(ids, MAX_HANDLING_IDENTITIES):
             try:
                 sync_data += Campaign.all_stats(
-                    account, chunk_ids, METRIC_GROUPS, **kwargs
+                    account, chunk_ids, metrics_group, **kwargs
                 )
             except Exception as e:
                 logging.error(e)
@@ -308,3 +329,11 @@ class TwitterConnection:
             "business_account_id": user.id
         }
         return data
+
+
+if __name__ == "__main__":
+    tw = TwitterConnection()
+    # print(tw.save_insight_ads_data_for_account_to_df(
+    #     "kgs38", "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
+    # )
+    print(tw.get_supported_metrics_group())
