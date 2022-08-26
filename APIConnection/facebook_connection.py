@@ -1,18 +1,22 @@
 # -*- coding: utf-8 -*-
-import os
 import errno
-import time
 import logging
+import os
+import time
+from abc import ABC
 from typing import List
+
+import pandas as pd
 from facebook import GraphAPI
 from facebook_business.adobjects.adaccount import AdAccount
-from facebook_business.adobjects.adsinsights import AdsInsights
 from facebook_business.adobjects.adreportrun import AdReportRun
-from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.user import User
-import pandas as pd
-from .settings import AD_INSIGHT_FIELD, FB_ACCESS_TOKEN
-from .exceptions import FBTimeOut
+from facebook_business.api import FacebookAdsApi
+from pandas import DataFrame
+
+from APIConnection.base_connection import BaseConnection
+from APIConnection.exceptions import FBTimeOut
+from APIConnection.settings import AD_INSIGHT_FIELD, FB_ACCESS_TOKEN
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
@@ -21,7 +25,7 @@ FB_API_URL = "https://developers.facebook.com"
 EXCLUDE_FB_ACC_INSIGHT_FIELDS = ["total_postbacks"]
 
 
-class FBConnection:
+class FBConnection(BaseConnection):
     """Wrapper class for fetching/parsing FB endpoints"""
 
     def __init__(self, access_token=None):
@@ -37,8 +41,8 @@ class FBConnection:
 
         """
         ans = []
-        for acc in self.accounts:
-            ans.append(acc["id"])
+        for account in self.accounts:
+            ans.append(account["id"])
         return ans
 
     @staticmethod
@@ -52,8 +56,44 @@ class FBConnection:
         fields = list(fields_df["Field 75"])
         return [field for field in fields if field not in EXCLUDE_FB_ACC_INSIGHT_FIELDS]
 
+    def get_report_df_for_account(
+            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+    ) -> DataFrame:
+        """Fetch insight ads data for an account account
+
+        Args:
+            account (str): account ID
+            start_date (str): string format of 'YYYY-MM-DD'
+            end_date (str): string format of 'YYYY-MM-DD'
+            dimensions (list(str)): fields list
+
+        Returns:
+            (:obj: `list`)
+        """
+        params = {
+            "time_range": {"since": start_date, "until": end_date},
+            "filtering": [],
+            "level": "account",
+            "time_increment": 1,
+            "breakdowns": [],
+        }
+        try:
+            account = AdAccount(account)
+            if dimensions is None:
+                dimensions = FBConnection.get_ads_insights_variable_list()
+            async_job = account.get_insights(fields=dimensions, params=params, is_async=True)
+            result_cursor = self._wait_for_async_job(async_job)
+            data = [item for item in result_cursor]
+            return pd.DataFrame(data)
+        except FBTimeOut:
+            logging.error(f"TIMEOUT: Can not get data for account {account}")
+        except Exception as e:
+            logging.error(
+                f"ERROR: Can not get data for account {account}. Detail {e}"
+            )
+
     def save_insight_ads_accounts_to_excel(
-        self, start_date, end_date, path="./", fields=None, subaccount_ids=None
+            self, start_date, end_date, path="./", fields=None, subaccount_ids=None
     ):
         """Save insight ads data to excel files
 
@@ -74,45 +114,9 @@ class FBConnection:
 
         for id in subaccount_ids:
             if id in self.get_sub_accounts():
-                try:
-                    self.save_insight_ads_data_for_account_to_excel(
-                        id, start_date, end_date, f"{path}/{id}.xls", fields
-                    )
-                except FBTimeOut:
-                    logging.error(f"TIMEOUT: Can not get data for account {id}")
-                except Exception as e:
-                    logging.error(
-                        f"ERROR: Can not get data for account {id}. Detail {e}"
-                    )
-
-    def get_insight_ads_data_for_account(
-            self, ad_account_id, start_date, end_date, fields
-    ):
-        """Fetch insight ads data for an account account
-
-        Args:
-            add_account_id (str): account ID
-            start_date (str): string format of 'YYYY-MM-DD'
-            end_date (str): string format of 'YYYY-MM-DD'
-            fields (list(str)): fields list
-
-        Returns:
-            (:obj: `list`)
-        """
-        params = {
-            "time_range": {"since": start_date, "until": end_date},
-            "filtering": [],
-            "level": "account",
-            "time_increment": 1,
-            "breakdowns": [],
-        }
-        account = AdAccount(ad_account_id)
-        if fields is None:
-            fields = FBConnection.get_ads_insights_variable_list()
-        async_job = account.get_insights(fields=fields, params=params, is_async=True)
-
-        result_cursor = self._wait_for_async_job(async_job)
-        return [item for item in result_cursor]
+                self.save_insight_ads_data_for_account_to_excel(
+                    id, start_date, end_date, f"{path}/{id}.xls", fields
+                )
 
     def save_insight_ads_data_for_account_to_excel(
             self, ad_account_id, start_date, end_date, file_path, fields=None
@@ -120,10 +124,10 @@ class FBConnection:
         """Save insight ads data to excel file
 
         Args:
-            add_account_id (str): account ID
+            ad_account_id (str): account ID
             start_date (str): string format of 'YYYY-MM-DD'
             end_date (str): string format of 'YYYY-MM-DD'
-            path (str): path or directory
+            file_path (str): path or directory
             fields (list(str)): fields list
 
         Returns:
@@ -132,11 +136,11 @@ class FBConnection:
         logging.info(f"Start processing account {ad_account_id}")
         if fields is None:
             fields = FBConnection.get_ads_insights_variable_list()
-        data = self.get_insight_ads_data_for_account(
+        df_insight = self.get_report_df_for_account(
             ad_account_id, start_date, end_date, fields
         )
-        df_insight = pd.DataFrame.from_dict(data)
-        df_insight.to_excel(file_path, index=False, merge_cells=True)
+        if df_insight:
+            df_insight.to_excel(file_path, index=False, merge_cells=True)
 
     def _wait_for_async_job(self, job):
         for loop in range(TIMEOUT):
@@ -161,6 +165,10 @@ class FBConnection:
 
 if __name__ == "__main__":
     conn = FBConnection(access_token=FB_ACCESS_TOKEN)
-    conn.save_insight_ads_accounts_to_excel(
-        start_date="2022-08-01", end_date="2022-08-02", subaccount_ids=["act_20862274"]
-    )
+    acc = conn.get_sub_accounts()
+    print(conn.get_sub_accounts_report_df(
+        start_date="2022-01-01",
+        end_date="2022-08-02",
+        dimensions=["clicks", "conversions"],
+        sub_accounts=["act_27385599"]
+    ))

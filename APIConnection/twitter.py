@@ -3,6 +3,7 @@ import datetime
 import errno
 import logging
 import os
+from abc import ABC
 from collections import defaultdict
 from typing import List, Dict
 
@@ -15,6 +16,7 @@ from twitter_ads.client import Client
 from twitter_ads.enum import METRIC_GROUP, GRANULARITY, PLACEMENT
 from twitter_ads.utils import split_list
 
+from APIConnection.base_connection import BaseConnection
 from exceptions import TwitterTimeout
 from settings import (
     TWITTER_ACCESS_TOKEN,
@@ -35,7 +37,7 @@ granularity = GRANULARITY.DAY
 placement = [PLACEMENT.ALL_ON_TWITTER, PLACEMENT.PUBLISHER_NETWORK]
 
 
-class TwitterConnection:
+class TwitterConnection(BaseConnection):
     """Wrapper class for fetching/parsing Twitter endpoints"""
 
     def __init__(
@@ -56,7 +58,7 @@ class TwitterConnection:
             self.token,
             self.token_secret
         )
-        self.accounts = self.get_ad_accounts_ids()
+        self.accounts = self.get_sub_accounts()
         self.user_api = self.tw_user_api()
 
     def tw_user_api(self):
@@ -101,7 +103,7 @@ class TwitterConnection:
         )
         return body
 
-    def get_ad_accounts_ids(self) -> List[str]:
+    def get_sub_accounts(self) -> List[str]:
         """
 
         Returns: list of ad account id
@@ -201,17 +203,17 @@ class TwitterConnection:
             except Exception as e:
                 raise e
 
-        df_insight = pd.DataFrame.from_dict(res)
+        df_insight = pd.DataFrame(res)
         return df_insight
 
-    def save_insight_ads_data_for_account_to_df(
-            self, account_id, start_date, end_date, metrics_group
+    def get_report_df_for_account(
+            self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> pd.DataFrame:
         campaign_data, analytics_data = self.fetch_analytic_data_for_account(
-            account_id, start_date, end_date, metrics_group
+            account, start_date, end_date, dimensions
         )
         df = self.convert_analysis_data_to_df(campaign_data, analytics_data)
-        df["account_id"] = account_id
+        df["account_id"] = account
         return df
 
     def save_insight_ads_data_for_account_to_excel(
@@ -238,7 +240,7 @@ class TwitterConnection:
 
     def fetch_analytic_data_for_account(
             self, account_id: str, start_date: str, end_date: str,
-            metrics_group: List[str] = DEFAULT_METRIC_GROUPS
+            metrics_group=None
     ):
         """Fetch insight ads data for an account account
 
@@ -251,6 +253,8 @@ class TwitterConnection:
         Returns:
             (:obj: `list`)
         """
+        if metrics_group is None:
+            metrics_group = DEFAULT_METRIC_GROUPS
         account = self.client.accounts(account_id)
         campaign_data = defaultdict(dict)
 
@@ -325,7 +329,7 @@ class TwitterConnection:
         user = self.tw_user_api().verify_credentials()
         data = {
             "business_account": user.name,
-            "num_sub_account": len(self.get_ad_accounts_ids()),
+            "num_sub_account": len(self.accounts),
             "business_account_id": user.id
         }
         return data
@@ -333,7 +337,8 @@ class TwitterConnection:
 
 if __name__ == "__main__":
     tw = TwitterConnection()
-    # print(tw.save_insight_ads_data_for_account_to_df(
-    #     "kgs38", "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    # )
-    print(tw.get_supported_metrics_group())
+    print(tw.get_sub_accounts())
+    print(tw.get_sub_accounts_report_df(
+        ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
+    )
+    # print(tw.get_supported_metrics_group())

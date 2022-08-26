@@ -10,12 +10,9 @@ from oauth2client import tools
 # from apiclient.discovery import build
 
 SCOPES = [
-    # 'https://www.googleapis.com/auth/userinfo.email',
-    # 'https://www.googleapis.com/auth/userinfo.profile',
-    # "https://www.googleapis.com/auth/analytics.edit",
     "https://www.googleapis.com/auth/analytics.readonly"
 ]
-CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'  # Path to client_secrets.json file.
+CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'
 # VIEW_ID = '107519727'
 
 
