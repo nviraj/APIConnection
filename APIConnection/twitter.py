@@ -17,8 +17,8 @@ from twitter_ads.enum import METRIC_GROUP, GRANULARITY, PLACEMENT
 from twitter_ads.utils import split_list
 
 from APIConnection.base_connection import BaseConnection
-from exceptions import TwitterTimeout
-from settings import (
+from APIConnection.exceptions import TwitterTimeout
+from APIConnection.settings import (
     TWITTER_ACCESS_TOKEN,
     TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET,
