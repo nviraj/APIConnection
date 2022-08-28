@@ -146,7 +146,7 @@ class TwitterConnection(BaseConnection):
             id = data["id"]
             try:
                 metrics = data["id_data"][0]["metrics"]
-                row["Time period"] = data["time_period"]
+                row["Time period"] = str(data["time_period"])
                 row["Campaign name"] = campaign_data[id]["name"]
 
                 if campaign_data[id]["objective"] == "VIDEO_VIEWS":
