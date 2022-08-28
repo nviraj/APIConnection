@@ -12,13 +12,12 @@ from oauth2client import tools
 # from apiclient.discovery import build
 
 SCOPES = [
-    # 'https://www.googleapis.com/auth/userinfo.email',
-    # 'https://www.googleapis.com/auth/userinfo.profile',
-    # "https://www.googleapis.com/auth/analytics.edit",
     "https://www.googleapis.com/auth/analytics.readonly"
 ]
-# CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'
-CLIENT_SECRETS_PATH = 'C:\\Users\\Admin\\Desktop\\APIConnection\\ga_quybulu.json'
+
+CLIENT_SECRETS_PATH = '/home/quydx/Desktop/APIConnection/client_secret.json'
+# CLIENT_SECRETS_PATH = 'C:\\Users\\Admin\\Desktop\\APIConnection\\ga_quybulu.json'
+
 # VIEW_ID = '107519727'
 
 
