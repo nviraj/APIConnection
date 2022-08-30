@@ -103,13 +103,13 @@ class TwitterConnection(BaseConnection):
         )
         return body
 
-    def get_sub_accounts(self) -> List[str]:
+    def get_sub_accounts(self) -> List[Dict]:
         """
 
         Returns: list of ad account id
 
         """
-        return [acc.id for acc in list(self.client.accounts())]
+        return [{"id": acc.id, "name": acc.name} for acc in list(self.client.accounts())]
 
     def save_insight_ads_accounts_to_excel(self, start_date, end_date, metrics_group,
                                            output_dir="./"):
@@ -328,9 +328,9 @@ class TwitterConnection(BaseConnection):
     def extract_connection_info(self):
         user = self.tw_user_api().verify_credentials()
         data = {
-            "business_account": user.name,
+            "login_account": user.name,
             "num_sub_account": len(self.accounts),
-            "business_account_id": user.id
+            "login_account_id": user.id
         }
         return data
 
@@ -338,7 +338,7 @@ class TwitterConnection(BaseConnection):
 if __name__ == "__main__":
     tw = TwitterConnection()
     print(tw.get_sub_accounts())
-    print(tw.get_sub_accounts_report_df(
-        ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    )
+    # print(tw.get_sub_accounts_report_df(
+    #     ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
+    # )
     # print(tw.get_supported_metrics_group())

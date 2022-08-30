@@ -138,8 +138,8 @@ class TTDConnection:
 
     def extract_connection_info(self):
         data = {
-            "business_account": self.username,
+            "login_account": self.username,
             "num_sub_account": 0,
-            "business_account_id": None
+            "login_account_id": None
         }
         return data

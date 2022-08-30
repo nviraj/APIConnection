@@ -12,7 +12,7 @@ class BaseConnection(ABC):
         pass
 
     @abstractmethod
-    def get_sub_accounts(self) -> List[str]:
+    def get_sub_accounts(self) -> List[Dict]:
         pass
 
     @abstractmethod

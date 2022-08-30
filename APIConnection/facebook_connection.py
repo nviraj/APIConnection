@@ -4,7 +4,7 @@ import logging
 import os
 import time
 from abc import ABC
-from typing import List
+from typing import List, Dict
 
 import pandas as pd
 from facebook import GraphAPI
@@ -32,9 +32,9 @@ class FBConnection(BaseConnection):
         self.access_token = access_token
         FacebookAdsApi.init(access_token=access_token)
         self.user = User(fbid="me")
-        self.accounts = list(self.user.get_ad_accounts())
+        self.accounts = list(self.user.get_ad_accounts(fields=["id", "name"]))
 
-    def get_sub_accounts(self) -> List[str]:
+    def get_sub_accounts(self) -> List[Dict]:
         """
         Get all list id of subaccounts
         Returns:
@@ -42,7 +42,7 @@ class FBConnection(BaseConnection):
         """
         ans = []
         for account in self.accounts:
-            ans.append(account["id"])
+            ans.append({"id": account["id"], "name": account["name"]})
         return ans
 
     @staticmethod
@@ -156,19 +156,20 @@ class FBConnection(BaseConnection):
         graph = GraphAPI(self.access_token)
         user_info = graph.get_object("me", fields="id,name,email")
         data = {
-            "business_account": user_info.get("email", ""),
+            "login_account": user_info.get("email", ""),
             "num_sub_account": len(self.get_sub_accounts()),
-            "business_account_id": user_info.get("id", "")
+            "login_account_id": user_info.get("id", "")
         }
         return data
 
 
 if __name__ == "__main__":
     conn = FBConnection(access_token=FB_ACCESS_TOKEN)
-    acc = conn.get_sub_accounts()
-    print(conn.get_sub_accounts_report_df(
-        start_date="2022-01-01",
-        end_date="2022-08-02",
-        dimensions=["clicks", "conversions"],
-        sub_accounts=["act_27385599"]
-    ))
+    print(conn.accounts)
+    print(conn.get_sub_accounts())
+    # print(conn.get_sub_accounts_report_df(
+    #     start_date="2022-01-01",
+    #     end_date="2022-08-02",
+    #     dimensions=["clicks", "conversions"],
+    #     sub_accounts=["act_27385599"]
+    # ))
