@@ -146,6 +146,7 @@ class TwitterConnection(BaseConnection):
             id = data["id"]
             try:
                 metrics = data["id_data"][0]["metrics"]
+                print(metrics)
                 row["Time period"] = str(data["time_period"])
                 row["Campaign name"] = campaign_data[id]["name"]
 
@@ -167,6 +168,9 @@ class TwitterConnection(BaseConnection):
                 ]
                 row["Impressions"] = (
                     sum(metrics["impressions"]) if metrics["impressions"] else 0
+                )
+                row["clicks"] = (
+                    sum(metrics["clicks"]) if metrics["clicks"] else 0
                 )
                 row["Spend"] = (
                     sum(metrics["billed_charge_local_micro"])
@@ -338,7 +342,7 @@ class TwitterConnection(BaseConnection):
 if __name__ == "__main__":
     tw = TwitterConnection()
     print(tw.get_sub_accounts())
-    # print(tw.get_sub_accounts_report_df(
-    #     ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    # )
+    data = tw.get_sub_accounts_report_df(
+        ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
+    print(data["clicks"])
     # print(tw.get_supported_metrics_group())
