@@ -31,7 +31,8 @@ class BaseConnection(ABC):
         final_df = pd.DataFrame()
         for account in sub_accounts:
             df = self.get_report_df_for_account(account, start_date, end_date, dimensions)
-            df["account_id"] = account
+            if not df.empty:
+                df["account_id"] = account
             final_df = pd.concat([final_df, df])
         final_df.columns = [col.lower().replace(" ", "_") for col in final_df.columns]
         return final_df

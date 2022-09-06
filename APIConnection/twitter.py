@@ -146,8 +146,9 @@ class TwitterConnection(BaseConnection):
             id = data["id"]
             try:
                 metrics = data["id_data"][0]["metrics"]
-                print(metrics)
                 row["Time period"] = str(data["time_period"])
+                row["Date start"] = str(data["date_start"])
+                row["Date stop"] = str(data["date_stop"])
                 row["Campaign name"] = campaign_data[id]["name"]
 
                 if campaign_data[id]["objective"] == "VIDEO_VIEWS":
@@ -292,6 +293,8 @@ class TwitterConnection(BaseConnection):
                     account, ids, start, start + datetime.timedelta(hours=24), metrics_group
             ):
                 row["time_period"] = start
+                row["date_start"] = start.strftime("%Y-%m-%d")
+                row["date_stop"] = start.strftime("%Y-%m-%d")
                 analytics_data.append(row)
             start = start + datetime.timedelta(hours=24)
 
@@ -341,8 +344,8 @@ class TwitterConnection(BaseConnection):
 
 if __name__ == "__main__":
     tw = TwitterConnection()
-    print(tw.get_sub_accounts())
+    # print(tw.get_sub_accounts())
     data = tw.get_sub_accounts_report_df(
         ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    print(data["clicks"])
+    print(data[["clicks", "date_start"]])
     # print(tw.get_supported_metrics_group())
