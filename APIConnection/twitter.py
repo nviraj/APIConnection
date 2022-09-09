@@ -150,6 +150,7 @@ class TwitterConnection(BaseConnection):
                 row["Date start"] = str(data["date_start"])
                 row["Date stop"] = str(data["date_stop"])
                 row["Campaign name"] = campaign_data[id]["name"]
+                row["Campaign id"] = campaign_data[id]["id"]
 
                 if campaign_data[id]["objective"] == "VIDEO_VIEWS":
                     row["Objective"] = "Video views"
@@ -266,6 +267,7 @@ class TwitterConnection(BaseConnection):
         for campaign in account.campaigns():
             line_items = list(account.line_items(None, campaign_ids=campaign.id))
             campaign_data[campaign.id]["name"] = campaign.name
+            campaign_data[campaign.id]["id"] = campaign.id
             campaign_data[campaign.id]["account_name"] = account.name
             campaign_data[campaign.id]["start_time"] = campaign.start_time
             campaign_data[campaign.id]["end_time"] = campaign.end_time
@@ -347,5 +349,5 @@ if __name__ == "__main__":
     # print(tw.get_sub_accounts())
     data = tw.get_sub_accounts_report_df(
         ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    print(data[["clicks", "date_start"]])
+    print(data[["clicks", "date_start", "campaign_id", "campaign_name"]])
     # print(tw.get_supported_metrics_group())

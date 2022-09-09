@@ -87,10 +87,12 @@ class FBConnection(BaseConnection):
             return pd.DataFrame(data)
         except FBTimeOut:
             logging.error(f"TIMEOUT: Can not get data for account {account}")
+            return pd.DataFrame()
         except Exception as e:
             logging.error(
                 f"ERROR: Can not get data for account {account}. Detail {e}"
             )
+            return pd.DataFrame()
 
     def save_insight_ads_accounts_to_excel(
             self, start_date, end_date, path="./", fields=None, subaccount_ids=None
