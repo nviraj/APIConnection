@@ -1,9 +1,13 @@
-import requests
 import json
-import time
 import logging
+import time
+from typing import List, Dict
 
 import pandas as pd
+import requests
+from pandas import DataFrame
+
+from APIConnection.base_connection import BaseConnection
 
 # from .exceptions import FBTimeOut
 
@@ -14,7 +18,7 @@ TIMEOUT = 1000
 TTD_API_URL = "https://api.thetradedesk.com"
 
 
-class TTDConnection:
+class TTDConnection(BaseConnection):
     """Wrapper class for fetching/parsing Trade Desk endpoints"""
 
     def __init__(self, username=None, password=None, auth_token=None):
@@ -58,6 +62,9 @@ class TTDConnection:
         else:
             # If response code is not ok (200), print the resulting http error code with description
             myResponse.raise_for_status()
+
+    def get_sub_accounts(self):
+        return []
 
     def get_reports(self, partner_id, start_date, end_date, directory="./"):
         """Fetch report report
@@ -138,8 +145,44 @@ class TTDConnection:
 
     def extract_connection_info(self):
         data = {
-            "business_account": self.username,
+            "login_account": self.username,
             "num_sub_account": 0,
-            "business_account_id": None
+            "login_account_id": None
         }
         return data
+
+    def get_report_df_for_account(
+            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+    ) -> DataFrame:
+
+        payload = {
+            "partnerIds": [account],
+            "SortFields": [{"FieldId": "Timezone", "Ascending": True}],
+            "ReportExecutionStates": [
+                "complete",
+            ],
+            "ExecutionSpansStartDate": start_date,
+            "ExecutionSpansEndDate": end_date,
+            "PageStartIndex": 0,
+            "PageSize": 10,
+        }
+
+        type = "application/json"
+        url = TTDConnection.get_report_reference_url()
+        myResponse = requests.post(
+            url,
+            headers={"Content-Type": type, "TTD-Auth": self.auth_token},
+            json=payload,
+        )
+
+        if myResponse.ok:
+            try:
+                jData = json.loads(str(myResponse.content, "utf-8"))
+                print(jData)
+                df = pd.DataFrame(jData["Result"])
+                return df
+            except Exception as e:
+                logging.error(f"ERROR: can not download the report. Details {e}")
+
+        else:
+            myResponse.raise_for_status()

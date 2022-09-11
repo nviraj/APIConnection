@@ -103,13 +103,13 @@ class TwitterConnection(BaseConnection):
         )
         return body
 
-    def get_sub_accounts(self) -> List[str]:
+    def get_sub_accounts(self) -> List[Dict]:
         """
 
         Returns: list of ad account id
 
         """
-        return [acc.id for acc in list(self.client.accounts())]
+        return [{"id": acc.id, "name": acc.name} for acc in list(self.client.accounts())]
 
     def save_insight_ads_accounts_to_excel(self, start_date, end_date, metrics_group,
                                            output_dir="./"):
@@ -147,7 +147,10 @@ class TwitterConnection(BaseConnection):
             try:
                 metrics = data["id_data"][0]["metrics"]
                 row["Time period"] = str(data["time_period"])
+                row["Date start"] = str(data["date_start"])
+                row["Date stop"] = str(data["date_stop"])
                 row["Campaign name"] = campaign_data[id]["name"]
+                row["Campaign id"] = campaign_data[id]["id"]
 
                 if campaign_data[id]["objective"] == "VIDEO_VIEWS":
                     row["Objective"] = "Video views"
@@ -167,6 +170,9 @@ class TwitterConnection(BaseConnection):
                 ]
                 row["Impressions"] = (
                     sum(metrics["impressions"]) if metrics["impressions"] else 0
+                )
+                row["clicks"] = (
+                    sum(metrics["clicks"]) if metrics["clicks"] else 0
                 )
                 row["Spend"] = (
                     sum(metrics["billed_charge_local_micro"])
@@ -261,6 +267,7 @@ class TwitterConnection(BaseConnection):
         for campaign in account.campaigns():
             line_items = list(account.line_items(None, campaign_ids=campaign.id))
             campaign_data[campaign.id]["name"] = campaign.name
+            campaign_data[campaign.id]["id"] = campaign.id
             campaign_data[campaign.id]["account_name"] = account.name
             campaign_data[campaign.id]["start_time"] = campaign.start_time
             campaign_data[campaign.id]["end_time"] = campaign.end_time
@@ -288,6 +295,8 @@ class TwitterConnection(BaseConnection):
                     account, ids, start, start + datetime.timedelta(hours=24), metrics_group
             ):
                 row["time_period"] = start
+                row["date_start"] = start.strftime("%Y-%m-%d")
+                row["date_stop"] = start.strftime("%Y-%m-%d")
                 analytics_data.append(row)
             start = start + datetime.timedelta(hours=24)
 
@@ -328,17 +337,17 @@ class TwitterConnection(BaseConnection):
     def extract_connection_info(self):
         user = self.tw_user_api().verify_credentials()
         data = {
-            "business_account": user.name,
+            "login_account": user.name,
             "num_sub_account": len(self.accounts),
-            "business_account_id": user.id
+            "login_account_id": user.id
         }
         return data
 
 
 if __name__ == "__main__":
     tw = TwitterConnection()
-    print(tw.get_sub_accounts())
-    print(tw.get_sub_accounts_report_df(
+    # print(tw.get_sub_accounts())
+    data = tw.get_sub_accounts_report_df(
         ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    )
+    print(data[["clicks", "date_start", "campaign_id", "campaign_name"]])
     # print(tw.get_supported_metrics_group())

@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
-import argparse
-import sys
 import logging
-from typing import Dict
+from typing import Dict, List
 
 import pandas as pd
 from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.errors import GoogleAdsException
 
-from .settings import GOOGLE_ADS_YAML, GOOGLE_ADS_FIELDS
+from APIConnection.settings import GOOGLE_ADS_YAML, GOOGLE_ADS_FIELDS
 
 QUERY_TABLE = "campaign"
 FILTER_FIELD = "segments.date"
@@ -32,8 +29,10 @@ class GoogleAds:
             GOOGLE_ADS_YAML, self.main_manager_account
         )
 
-    def get_sub_accounts(self):
-        return self.all_child_acc(self.googleads_client)
+    def get_sub_accounts(self) -> List[Dict]:
+        child_accounts = self.all_child_acc(self.googleads_client)
+        sub_accounts = [{"id": ch[0], "name": ch[1]} for ch in child_accounts]
+        return sub_accounts
 
     def _change_customer_id_yaml(self, yaml_file, customer):
         with open(yaml_file, "r") as yaml:
@@ -277,9 +276,9 @@ class GoogleAds:
         customer = list(response)[0].customer
         print(customer)
         data = {
-            "business_account": "",
+            "login_account": "",
             "num_sub_account": len(self.get_sub_accounts()),
-            "business_account_id": ""
+            "login_account_id": ""
         }
         return data
 

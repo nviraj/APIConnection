@@ -119,9 +119,9 @@ class GoogleAnalyst:
     def extract_connection_info(self) -> Dict[str, Any]:
         user_summeries = self.get_summaries()
         data = {
-            "business_account": user_summeries.get("username", ""),
+            "login_account": user_summeries.get("username", ""),
             "num_sub_account": len(user_summeries["items"]),
-            "business_account_id": user_summeries.get("id", ""),
+            "login_account_id": user_summeries.get("id", ""),
             "views": [item["profiles"][0]["id"] for a in user_summeries.get("items", []) for item in
                       a["webProperties"]]
         }
