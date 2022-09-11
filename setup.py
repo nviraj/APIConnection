@@ -25,7 +25,7 @@ setup(
         'lxml>=4.6.3',
         'xlwt>=1.3.0',
         'aiohttp==3.8.1',
-        'async-timeout',
+        'async-timeout==4.0.2',
         'attrs==21.2.0',
         'bcrypt==3.2.0',
         'cachetools==4.2.2',
