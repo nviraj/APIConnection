@@ -2,6 +2,7 @@
 # of the application. This avoids prompting the user for authorization every
 # time the access token expires, by remembering the refresh token.
 CREDENTIAL_STORE_FILE = "cached_auth.dat"
+SERVICE_ACCOUNT_CREDS = "/home/quydx/datapal/datapal-compose/submodules/APIConnection/dv360-api-277821-3996c8539429.json"
 # Path to log file
 LOG_FILE = "dv360.log"
 # Logging level
