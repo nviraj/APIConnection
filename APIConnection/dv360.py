@@ -1,36 +1,39 @@
-import socket
 import argparse
+import logging
 import os
-import pprint
-import httplib2
+import socket
 import sys
-
-import pandas as pd
+from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
-from contextlib import closing
-from six.moves.urllib.request import urlopen
+from pprint import pprint
+from typing import Dict, Any
 
+import httplib2
 from google.api_core import retry
 from googleapiclient import discovery
+from googleapiclient.discovery import build
+from oauth2client import tools, client, file
 from oauth2client.file import Storage
-from oauth2client import tools, client
 from oauth2client.service_account import ServiceAccountCredentials
-
-sys.path.insert(0, os.path.abspath(".."))
+from six.moves.urllib.request import urlopen
 
 from APIConnection.config import dv360_config
 from APIConnection.logger import get_logger
 
-# logger = get_logger(
-#     "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
-# )
+sys.path.insert(0, os.path.abspath(".."))
+
+logger = get_logger(
+    "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
+)
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+
 
 class DV360(object):
     _API_NAME = "displayvideo"
     _DEFAULT_API_VERSION = "v1"
     _API_SCOPES = [
+        # "https://www.googleapis.com/auth/analytics.readonly"
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/display-video",
     ]
@@ -38,7 +41,8 @@ class DV360(object):
     _REPORT_EXT = ".csv"
 
     def __init__(
-        self, cred="", date_range="", output="", frequency="", report_window=None
+            self, cred="/home/quydx/Desktop/APIConnection/dv360.json", date_range="", output=".",
+            frequency="", report_window=None
     ):
         if date_range:
             self.REPORT_DATE_RANGE = date_range
@@ -48,6 +52,7 @@ class DV360(object):
         self.REPORT_OUTPUT_DIR = output
         self.REPORT_FREQUENCY = frequency
         self.REPORT_WINDOW = report_window
+        self.cached_credential_path = dv360_config.CREDENTIAL_STORE_FILE
 
     @staticmethod
     def get_arguments(argv, desc, parents=None):
@@ -143,7 +148,8 @@ class DV360(object):
           A googleapiclient.discovery.Resource instance used to interact with the Display & Video 360 API.
         """
         http = self.authenticate_using_user_account()
-
+        # http = self.authenticate_using_service_account()
+        print(http)
         discovery_url = self.build_discovery_url(version, label, key)
 
         socket.setdefaulttimeout(180)
@@ -216,9 +222,8 @@ class DV360(object):
                 os.system(f"mkdir -p {self.REPORT_OUTPUT_DIR}")
                 # If it is recent enough...
                 if self.is_in_report_window(
-                    query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                        query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
                 ):
-
                     # Grab the report and write contents to a file.
                     report_url = query["metadata"][
                         "googleCloudStoragePathForLatestReport"
@@ -248,15 +253,33 @@ class DV360(object):
           A boolean indicating whether the given query's report run time is within
           the report window.
         """
-        report_time = datetime.fromtimestamp(int((run_time_ms)) / 1000)
+        report_time = datetime.fromtimestamp(int(run_time_ms) / 1000)
         earliest_time_in_range = datetime.now() - timedelta(hours=report_window)
         return report_time > earliest_time_in_range
+
+    def extract_connection_info(self) -> Dict[str, Any]:
+        info = {}
+        data = {
+            "login_account": info.get("username", ""),
+            "num_sub_account": 0,
+            "login_account_id": info.get("id", ""),
+        }
+        return data
 
 
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
 
-    dv360 = DV360()
+    dv360 = DV360(frequency="ONE_TIME", date_range="LAST_7_DAYS", report_window=24)
+    # print(dv360.get_summaries())
     dbm_service_object, dv360_service_object = dv360.get_service(version="v1")
-    dv360.create_report(dbm_service_object, dv360_service_object)
+    # pprint(dv360_service_object.management().accountSummaries().list().execute())
+    # pprint(dbm_service_object.queries().listqueries().execute())
+
+    # query_id = dv360.create_report(dbm_service_object, dv360_service_object)
+    # print(query_id)
+
+    query_id = 1000114064
+    pprint(dbm_service_object.queries().getquery(queryId=query_id).execute())
+    dv360.get_full_report(dbm_service_object, query_id)
