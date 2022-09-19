@@ -103,7 +103,7 @@ class DV360:
         # of the application. This avoids prompting the user for authorization every
         # time the access token expires, by remembering the refresh token.
         temp_file = tempfile.NamedTemporaryFile()
-        with open(temp_file.name, "wb") as f:
+        with open(temp_file.name, "w") as f:
             f.write(self.cached_credential)
         storage = Storage(temp_file.name)
         credentials = storage.get()
@@ -382,7 +382,7 @@ class DV360:
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    with open("credential_cached_storage/cached_auth.dat", "rb") as f:
+    with open("credential_cached_storage/cached_auth_None.json", "r") as f:
         content = f.read()
     dv360 = DV360(
         frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24,
@@ -391,9 +391,9 @@ if __name__ == "__main__":
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
     print(dv360.extract_connection_info())
-    print(dv360.get_sub_accounts_report_df(
-        [], "CURRENT_DAY", REPORT_METRICS
-    ))
+    # print(dv360.get_sub_accounts_report_df(
+    #     [], "CURRENT_DAY", REPORT_METRICS
+    # ))
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
