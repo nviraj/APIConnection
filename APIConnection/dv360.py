@@ -6,6 +6,7 @@ import sys
 from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
+from pprint import pprint
 from typing import Dict, Any
 from typing import List
 
@@ -13,6 +14,7 @@ import httplib2
 import pandas as pd
 from google.api_core import retry
 from googleapiclient import discovery
+from googleapiclient.discovery import build
 from oauth2client import tools, client
 from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
@@ -35,7 +37,7 @@ class DV360:
     _API_NAME = "displayvideo"
     _DEFAULT_API_VERSION = "v1"
     _API_SCOPES = [
-        # "https://www.googleapis.com/auth/analytics.readonly"
+        "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/display-video",
     ]
@@ -43,8 +45,13 @@ class DV360:
     _REPORT_EXT = ".csv"
 
     def __init__(
-            self, cred="/home/quydx/Desktop/APIConnection/dv360.json", date_range="", output=".",
-            frequency="", report_window=None
+            self,
+            cred="/home/quydx/Desktop/APIConnection/oauth2_gg.json",
+            date_range="",
+            output=".",
+            frequency="",
+            report_window=None,
+            connection_id=None
     ):
         if date_range:
             self.REPORT_DATE_RANGE = date_range
@@ -54,7 +61,8 @@ class DV360:
         self.REPORT_OUTPUT_DIR = output
         self.REPORT_FREQUENCY = frequency
         self.REPORT_WINDOW = report_window
-        self.cached_credential_path = dv360_config.CREDENTIAL_STORE_FILE
+        self.cached_credential_path = dv360_config.CREDENTIAL_STORE_DIR + f"cached_auth_{connection_id}.dat"
+        self.http = self.authenticate_using_user_account()
         self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
     @staticmethod
@@ -85,7 +93,7 @@ class DV360:
         # store allows auth credentials to be cached, so they survive multiple runs
         # of the application. This avoids prompting the user for authorization every
         # time the access token expires, by remembering the refresh token.
-        storage = Storage(dv360_config.CREDENTIAL_STORE_FILE)
+        storage = Storage(self.cached_credential_path)
         credentials = storage.get()
 
         # If no credentials were found, go through the authorization process and
@@ -153,7 +161,7 @@ class DV360:
         Returns:
           A googleapiclient.discovery.Resource instance used to interact with the Display & Video 360 API.
         """
-        http = self.authenticate_using_user_account()
+        # http = self.authenticate_using_user_account()
         # http = self.authenticate_using_service_account()
         discovery_url = self.build_discovery_url(version, label, key)
 
@@ -161,10 +169,10 @@ class DV360:
 
         # Initialize client for Display & Video 360 API
         dv360_service = discovery.build(
-            self._API_NAME, version, discoveryServiceUrl=discovery_url, http=http
+            self._API_NAME, version, discoveryServiceUrl=discovery_url, http=self.http
         )
 
-        dbm_service = discovery.build("doubleclickbidmanager", "v1.1", http=http)
+        dbm_service = discovery.build("doubleclickbidmanager", "v1.1", http=self.http)
 
         return dbm_service, dv360_service
 
@@ -331,10 +339,27 @@ class DV360:
         earliest_time_in_range = datetime.now() - timedelta(hours=report_window)
         return report_time > earliest_time_in_range
 
+    def get_user_info(self):
+        """Send a request to the UserInfo API to retrieve the user's information.
+        Returns:
+          User information as a dict.
+        """
+        user_info_service = build(
+            serviceName='oauth2', version='v2',
+            http=self.http
+        )
+        user_info = None
+        try:
+            user_info = user_info_service.userinfo().get().execute()
+            print(user_info)
+        except Exception as e:
+            logging.error('An error occurred: %s', e)
+        return user_info if user_info else {}
+
     def extract_connection_info(self) -> Dict[str, Any]:
-        info = {}
+        info = self.get_user_info()
         data = {
-            "login_account": info.get("username", ""),
+            "login_account": info.get("email", ""),
             "num_sub_account": 0,
             "login_account_id": info.get("id", "")
         }
@@ -344,15 +369,13 @@ class DV360:
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    dv360 = DV360(frequency="ONE_TIME", date_range="LAST_7_DAYS", report_window=24)
     dv360 = DV360(frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24)
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
-    # pprint(dv360.dv360_service.users().list().execute())
     print(dv360.extract_connection_info())
-    print(dv360.get_sub_accounts_report_df(
-        [], "CURRENT_DAY", REPORT_METRICS
-    ))
+    # print(dv360.get_sub_accounts_report_df(
+    #     [], "CURRENT_DAY", REPORT_METRICS
+    # ))
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
