@@ -6,19 +6,21 @@ import sys
 from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
-from pprint import pprint
 from typing import Dict, Any
+from typing import List
 
 import httplib2
+import pandas as pd
 from google.api_core import retry
 from googleapiclient import discovery
-from googleapiclient.discovery import build
-from oauth2client import tools, client, file
+from oauth2client import tools, client
 from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
+from pandas import DataFrame
 from six.moves.urllib.request import urlopen
 
 from APIConnection.config import dv360_config
+from APIConnection.config.dv360_config import REPORT_METRICS
 from APIConnection.logger import get_logger
 
 sys.path.insert(0, os.path.abspath(".."))
@@ -29,7 +31,7 @@ logger = get_logger(
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
-class DV360(object):
+class DV360:
     _API_NAME = "displayvideo"
     _DEFAULT_API_VERSION = "v1"
     _API_SCOPES = [
@@ -53,6 +55,7 @@ class DV360(object):
         self.REPORT_FREQUENCY = frequency
         self.REPORT_WINDOW = report_window
         self.cached_credential_path = dv360_config.CREDENTIAL_STORE_FILE
+        self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
     @staticmethod
     def get_arguments(argv, desc, parents=None):
@@ -113,6 +116,9 @@ class DV360(object):
 
         return http
 
+    def get_sub_accounts(self) -> List[Dict]:
+        return []
+
     def build_discovery_url(self, version, label, key):
         """Builds a discovery url from which to fetch the proper discovery document.
 
@@ -149,7 +155,6 @@ class DV360(object):
         """
         http = self.authenticate_using_user_account()
         # http = self.authenticate_using_service_account()
-        print(http)
         discovery_url = self.build_discovery_url(version, label, key)
 
         socket.setdefaulttimeout(180)
@@ -163,7 +168,7 @@ class DV360(object):
 
         return dbm_service, dv360_service
 
-    def create_report(self, dbm_service, dv360_service):
+    def create_report(self):
         # Define DV360 report definition (i.e. metrics and filters)
         # List of official supported metrics and filter groups can be found in following url:
         # https://developers.google.com/bid-manager/v1.1/filters-metrics
@@ -185,13 +190,82 @@ class DV360(object):
         # Create new query using report definition
         try:
             operation = (
-                dbm_service.queries().createquery(body=report_definition).execute()
+                self.dbm_service.queries().createquery(body=report_definition).execute()
             )
+            print(operation)
             return operation["queryId"]
         except Exception as e:
             raise e
 
-    def get_full_report(self, dbm_service, query_id):
+    def get_report_df_for_account(
+            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+    ) -> DataFrame:
+        return pd.DataFrame()
+
+    def get_sub_accounts_report_df(
+            self, sub_accounts: List[str], date_range: str, dimensions: List[str]
+    ) -> DataFrame:
+        report_definition = {
+            "params": {
+                "type": dv360_config.REPORT_TYPE,
+                "metrics": dimensions,
+                "groupBys": dv360_config.REPORT_FILTER_GROUP,
+                "filters": [],
+            },
+            "metadata": {
+                "title": dv360_config.REPORT_TITLE,
+                "dataRange": date_range,
+                "format": dv360_config.REPORT_FORMAT,
+            },
+            "schedule": {"frequency": self.REPORT_FREQUENCY},
+        }
+        try:
+            operation = (
+                self.dbm_service.queries().createquery(body=report_definition).execute()
+            )
+            query_id = operation["queryId"]
+            if query_id:
+                @retry.Retry(
+                    predicate=retry.if_exception_type(Exception),
+                    initial=5,
+                    maximum=60,
+                    deadline=18000,
+                )
+                def check_get_query_completion(getquery_request):
+                    """Queries metadata to check for completion."""
+                    completion_response = getquery_request.execute()
+                    if completion_response["metadata"]["running"]:
+                        raise Exception("The operation has not completed.")
+                    return completion_response
+
+                query_request = self.dbm_service.queries().getquery(queryId=query_id)
+                query = check_get_query_completion(query_request)
+                try:
+                    if self.is_in_report_window(
+                            query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                    ):
+                        report_url = query["metadata"][
+                            "googleCloudStoragePathForLatestReport"
+                        ]
+                        report_df = pd.read_csv(report_url)
+                        report_df = report_df[
+                            report_df.Date.str.match(r'\d{4}/\d{2}/\d{2}', na=False)
+                        ]
+                        report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
+                        return report_df
+                    else:
+                        logger.error(
+                            f"No reports for queryId {query['queryId']} "
+                            f"in the last {self.REPORT_WINDOW} hours."
+                        )
+                except KeyError:
+                    logger.error('No report found for queryId "%s".' % query_id)
+            else:
+                raise "Query ID must not be none"
+        except Exception as e:
+            raise e
+
+    def get_full_report(self, query_id):
         if query_id:
             # Runs the given Queries.getquery request, retrying with an exponential
             # backoff. Returns completed operation. Will raise an exception if the
@@ -210,7 +284,7 @@ class DV360(object):
                 return completion_response
 
             # Call the API, getting the latest status for the passed queryId.
-            getquery_request = dbm_service.queries().getquery(queryId=query_id)
+            getquery_request = self.dbm_service.queries().getquery(queryId=query_id)
             query = check_get_query_completion(getquery_request)
             try:
                 now = datetime.now()  # current date and time
@@ -262,7 +336,7 @@ class DV360(object):
         data = {
             "login_account": info.get("username", ""),
             "num_sub_account": 0,
-            "login_account_id": info.get("id", ""),
+            "login_account_id": info.get("id", "")
         }
         return data
 
@@ -270,16 +344,22 @@ class DV360(object):
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-
     dv360 = DV360(frequency="ONE_TIME", date_range="LAST_7_DAYS", report_window=24)
-    # print(dv360.get_summaries())
-    dbm_service_object, dv360_service_object = dv360.get_service(version="v1")
-    # pprint(dv360_service_object.management().accountSummaries().list().execute())
-    # pprint(dbm_service_object.queries().listqueries().execute())
-
-    # query_id = dv360.create_report(dbm_service_object, dv360_service_object)
-    # print(query_id)
-
-    query_id = 1000114064
-    pprint(dbm_service_object.queries().getquery(queryId=query_id).execute())
-    dv360.get_full_report(dbm_service_object, query_id)
+    dv360 = DV360(frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24)
+    # pprint(dbm_service_object)
+    # pprint(dv360.dbm_service.queries().listqueries().execute())
+    # pprint(dv360.dv360_service.users().list().execute())
+    print(dv360.extract_connection_info())
+    print(dv360.get_sub_accounts_report_df(
+        [], "CURRENT_DAY", REPORT_METRICS
+    ))
+    # query_id = dv360.create_report()
+    # pprint(query_id)
+    # query_id = 1000669689
+    # pprint(dv360.dbm_service.queries().getquery(queryId=query_id).execute())
+    # df = dv360.dbm_service.get_full_report_df(query_id)
+    # df = pd.read_csv(
+    #     "/home/quydx/datapal/datapal-compose/submodules/APIConnection/APIConnection/2022_09_17-172722.csv"
+    # )
+    # print(df)
+    # print(df.info())
