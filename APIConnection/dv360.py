@@ -3,10 +3,11 @@ import logging
 import os
 import socket
 import sys
+import tempfile
 from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
-from pprint import pprint
+from io import StringIO
 from typing import Dict, Any
 from typing import List
 
@@ -24,6 +25,7 @@ from six.moves.urllib.request import urlopen
 from APIConnection.config import dv360_config
 from APIConnection.config.dv360_config import REPORT_METRICS
 from APIConnection.logger import get_logger
+from APIConnection.settings import GG_OAUTH2_CRED
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -46,12 +48,13 @@ class DV360:
 
     def __init__(
             self,
-            cred="/home/quydx/Desktop/APIConnection/oauth2_gg.json",
+            cred=GG_OAUTH2_CRED,
             date_range="",
             output=".",
             frequency="",
             report_window=None,
-            connection_id=None
+            cached_credential=None,
+            allow_consent=True
     ):
         if date_range:
             self.REPORT_DATE_RANGE = date_range
@@ -61,7 +64,13 @@ class DV360:
         self.REPORT_OUTPUT_DIR = output
         self.REPORT_FREQUENCY = frequency
         self.REPORT_WINDOW = report_window
-        self.cached_credential_path = dv360_config.CREDENTIAL_STORE_DIR + f"cached_auth_{connection_id}.dat"
+
+        self.cached_credential = cached_credential
+        if not allow_consent and not self.cached_credential:
+            raise Exception("Cached credentials is required")
+        # self.cached_credential_path = (
+        #     dv360_config.CREDENTIAL_STORE_DIR + f"cached_auth_{connection_id}.json"
+        # )
         self.http = self.authenticate_using_user_account()
         self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
@@ -93,8 +102,12 @@ class DV360:
         # store allows auth credentials to be cached, so they survive multiple runs
         # of the application. This avoids prompting the user for authorization every
         # time the access token expires, by remembering the refresh token.
-        storage = Storage(self.cached_credential_path)
+        temp_file = tempfile.NamedTemporaryFile()
+        with open(temp_file.name, "wb") as f:
+            f.write(self.cached_credential)
+        storage = Storage(temp_file.name)
         credentials = storage.get()
+        temp_file.close()
 
         # If no credentials were found, go through the authorization process and
         # persist credentials to the credential store.
@@ -369,13 +382,18 @@ class DV360:
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    dv360 = DV360(frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24)
+    with open("credential_cached_storage/cached_auth.dat", "rb") as f:
+        content = f.read()
+    dv360 = DV360(
+        frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24,
+        cached_credential=content
+    )
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
     print(dv360.extract_connection_info())
-    # print(dv360.get_sub_accounts_report_df(
-    #     [], "CURRENT_DAY", REPORT_METRICS
-    # ))
+    print(dv360.get_sub_accounts_report_df(
+        [], "CURRENT_DAY", REPORT_METRICS
+    ))
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
