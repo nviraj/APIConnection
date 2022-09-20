@@ -32,7 +32,6 @@ sys.path.insert(0, os.path.abspath(".."))
 logger = get_logger(
     "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
 )
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
 
 class DV360:
@@ -68,9 +67,6 @@ class DV360:
         self.cached_credential = cached_credential
         if not allow_consent and not self.cached_credential:
             raise Exception("Cached credentials is required")
-        # self.cached_credential_path = (
-        #     dv360_config.CREDENTIAL_STORE_DIR + f"cached_auth_{connection_id}.json"
-        # )
         self.http = self.authenticate_using_user_account()
         self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
