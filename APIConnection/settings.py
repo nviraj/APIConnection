@@ -10,7 +10,7 @@ TTD_AUTH_TOKEN = ""
 
 AD_INSIGHT_FIELD = f"{dir_path}/config/Facebook_fields_ads_insights.csv"
 
-
+GG_OAUTH2_CRED = "/home/quydx/Desktop/APIConnection/oauth2_gg.json"
 # Path to client secrets
 GOOGLE_CLIENT_SECRET = ""
 
