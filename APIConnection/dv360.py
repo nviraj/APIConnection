@@ -7,16 +7,16 @@ import tempfile
 from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
-from io import StringIO
 from typing import Dict, Any
 from typing import List
 
 import httplib2
 import pandas as pd
 from google.api_core import retry
+from google_auth_oauthlib.flow import Flow
 from googleapiclient import discovery
 from googleapiclient.discovery import build
-from oauth2client import tools, client
+from oauth2client import client, tools
 from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
 from pandas import DataFrame
@@ -38,6 +38,7 @@ class DV360:
     _API_NAME = "displayvideo"
     _DEFAULT_API_VERSION = "v1"
     _API_SCOPES = [
+        "https://www.googleapis.com/auth/userinfo.profile",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/display-video",
@@ -66,7 +67,8 @@ class DV360:
 
         self.cached_credential = cached_credential
         if not allow_consent and not self.cached_credential:
-            raise Exception("Cached credentials is required")
+            raise Exception("Cached credential is required")
+
         self.http = self.authenticate_using_user_account()
         self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
@@ -96,11 +98,12 @@ class DV360:
         )
         # Check whether credentials exist in the credential store. Using a credential
         # store allows auth credentials to be cached, so they survive multiple runs
-        # of the application. This avoids prompting the user for authorization every
+        # of the application. This avoids prompting the user for authorization evebry
         # time the access token expires, by remembering the refresh token.
         temp_file = tempfile.NamedTemporaryFile()
-        with open(temp_file.name, "w") as f:
-            f.write(self.cached_credential)
+        with open(temp_file.name, "wb") as f:
+            f.write(self.cached_credential.encode())
+
         storage = Storage(temp_file.name)
         credentials = storage.get()
         temp_file.close()
@@ -116,6 +119,26 @@ class DV360:
         http = credentials.authorize(httplib2.Http())
 
         return http
+
+    def get_oauth2_authorize_url(self):
+        """Steps through Service Account OAuth 2.0 flow to retrieve credentials."""
+        flow = Flow.from_client_secrets_file(
+            self.CREDENTIALS_FILE, scopes=self._API_SCOPES,
+            redirect_uri="http://localhost:8000"
+        )
+        # flow.run_local_server()
+
+        print(flow.authorization_url())
+        return flow
+
+    def get_authorization_from_code(self, code):
+        flow = client.flow_from_clientsecrets(
+            self.CREDENTIALS_FILE, scope=self._API_SCOPES
+        )
+        # flow.fetch_token()
+        credentials = flow.step2_exchange(code=code, http=httplib2.Http())
+        # http = credential.authorize(httplib2.Http())
+        return credentials
 
     def authenticate_using_service_account(self, impersonation_email=""):
         """Authorizes an httplib2.Http instance using service account credentials."""
@@ -380,16 +403,20 @@ if __name__ == "__main__":
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
     with open("credential_cached_storage/cached_auth_None.json", "r") as f:
         content = f.read()
+    # print(content)
     dv360 = DV360(
-        frequency="ONE_TIME", date_range="CURRENT_DAY", report_window=24,
+        frequency="ONE_TIME",
+        date_range="CURRENT_DAY",
+        report_window=24,
         cached_credential=content
     )
+    # flow = dv360.get_oauth2_authorize_url()
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
     print(dv360.extract_connection_info())
-    # print(dv360.get_sub_accounts_report_df(
-    #     [], "CURRENT_DAY", REPORT_METRICS
-    # ))
+    print(dv360.get_sub_accounts_report_df(
+        [], "CURRENT_DAY", REPORT_METRICS
+    ))
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
