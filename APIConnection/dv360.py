@@ -98,9 +98,11 @@ class DV360:
         )
         # Check whether credentials exist in the credential store. Using a credential
         # store allows auth credentials to be cached, so they survive multiple runs
-        # of the application. This avoids prompting the user for authorization evebry
+        # of the application. This avoids prompting the user for authorization every
         # time the access token expires, by remembering the refresh token.
         temp_file = tempfile.NamedTemporaryFile()
+        # if want to save to a persistent file, uncomment below line
+        # temp_file = f"{dv360_config.CREDENTIAL_STORE_FILE}"
         with open(temp_file.name, "wb") as f:
             f.write(self.cached_credential.encode())
 
@@ -193,8 +195,6 @@ class DV360:
         Returns:
           A googleapiclient.discovery.Resource instance used to interact with the Display & Video 360 API.
         """
-        # http = self.authenticate_using_user_account()
-        # http = self.authenticate_using_service_account()
         discovery_url = self.build_discovery_url(version, label, key)
 
         socket.setdefaulttimeout(180)
@@ -232,7 +232,6 @@ class DV360:
             operation = (
                 self.dbm_service.queries().createquery(body=report_definition).execute()
             )
-            print(operation)
             return operation["queryId"]
         except Exception as e:
             raise e
@@ -383,7 +382,6 @@ class DV360:
         user_info = None
         try:
             user_info = user_info_service.userinfo().get().execute()
-            print(user_info)
         except Exception as e:
             logging.error('An error occurred: %s', e)
         return user_info if user_info else {}
