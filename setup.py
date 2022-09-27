@@ -71,8 +71,7 @@ setup(
         'twitter-ads==10.0.0',
         'facebook-sdk==3.1.0',
         'tweepy==4.10.0'
-    ]
-    ,
+    ],
     long_description=readme,
     author="Giang Bui",
     author_email="giangb.datapal@gmail.com",

@@ -7,9 +7,9 @@ FB_ACCESS_TOKEN = ""
 # use either simple auth or access token. Please provide the access token here; otherwise
 # you need to run the program with simple auth
 TTD_AUTH_TOKEN = ""
-
+GG_OAUTH2_CRED = os.getenv("GG_OAUTH2_CRED", "/app-deploy/oauth2_gg.json")
+# GG_OAUTH2_CRED = "/home/quydx/datapal/datapal-compose/submodules/APIConnection/datapal-oauth2.json"
 AD_INSIGHT_FIELD = f"{dir_path}/config/Facebook_fields_ads_insights.csv"
-
 
 # Path to client secrets
 GOOGLE_CLIENT_SECRET = ""

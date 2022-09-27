@@ -1,36 +1,45 @@
-import socket
 import argparse
+import logging
 import os
-import pprint
-import httplib2
+import socket
 import sys
-
-import pandas as pd
+import tempfile
+from contextlib import closing
 from datetime import datetime
 from datetime import timedelta
-from contextlib import closing
+from typing import Dict, Any
+from typing import List
+
+import httplib2
+import pandas as pd
+from google.api_core import retry
+from google_auth_oauthlib.flow import Flow
+from googleapiclient import discovery
+from googleapiclient.discovery import build
+from oauth2client import client, tools
+from oauth2client.file import Storage
+from oauth2client.service_account import ServiceAccountCredentials
+from pandas import DataFrame
 from six.moves.urllib.request import urlopen
 
-from google.api_core import retry
-from googleapiclient import discovery
-from oauth2client.file import Storage
-from oauth2client import tools, client
-from oauth2client.service_account import ServiceAccountCredentials
+from APIConnection.config import dv360_config
+from APIConnection.config.dv360_config import REPORT_METRICS
+from APIConnection.logger import get_logger
+from APIConnection.settings import GG_OAUTH2_CRED
 
 sys.path.insert(0, os.path.abspath(".."))
 
-from APIConnection.config import dv360_config
-from APIConnection.logger import get_logger
+logger = get_logger(
+    "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
+)
 
-# logger = get_logger(
-#     "dv360", file_name=dv360_config.LOG_FILE, log_level=dv360_config.LOG_LEVEL
-# )
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
-class DV360(object):
+class DV360:
     _API_NAME = "displayvideo"
     _DEFAULT_API_VERSION = "v1"
     _API_SCOPES = [
+        "https://www.googleapis.com/auth/userinfo.profile",
+        "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/doubleclickbidmanager",
         "https://www.googleapis.com/auth/display-video",
     ]
@@ -38,7 +47,14 @@ class DV360(object):
     _REPORT_EXT = ".csv"
 
     def __init__(
-        self, cred="", date_range="", output="", frequency="", report_window=None
+            self,
+            cred=GG_OAUTH2_CRED,
+            date_range="",
+            output=".",
+            frequency="",
+            report_window=None,
+            cached_credential=None,
+            allow_consent=True
     ):
         if date_range:
             self.REPORT_DATE_RANGE = date_range
@@ -48,6 +64,13 @@ class DV360(object):
         self.REPORT_OUTPUT_DIR = output
         self.REPORT_FREQUENCY = frequency
         self.REPORT_WINDOW = report_window
+
+        self.cached_credential = cached_credential
+        if not allow_consent and not self.cached_credential:
+            raise Exception("Cached credential is required")
+
+        self.http = self.authenticate_using_user_account()
+        self.dbm_service, self.dv360_service = self.get_service(version="v1")
 
     @staticmethod
     def get_arguments(argv, desc, parents=None):
@@ -77,8 +100,15 @@ class DV360(object):
         # store allows auth credentials to be cached, so they survive multiple runs
         # of the application. This avoids prompting the user for authorization every
         # time the access token expires, by remembering the refresh token.
-        storage = Storage(dv360_config.CREDENTIAL_STORE_FILE)
+        temp_file = tempfile.NamedTemporaryFile()
+        # if want to save to a persistent file, uncomment below line
+        # temp_file = f"{dv360_config.CREDENTIAL_STORE_FILE}"
+        with open(temp_file.name, "wb") as f:
+            f.write(self.cached_credential.encode())
+
+        storage = Storage(temp_file.name)
         credentials = storage.get()
+        temp_file.close()
 
         # If no credentials were found, go through the authorization process and
         # persist credentials to the credential store.
@@ -91,6 +121,26 @@ class DV360(object):
         http = credentials.authorize(httplib2.Http())
 
         return http
+
+    def get_oauth2_authorize_url(self):
+        """Steps through Service Account OAuth 2.0 flow to retrieve credentials."""
+        flow = Flow.from_client_secrets_file(
+            self.CREDENTIALS_FILE, scopes=self._API_SCOPES,
+            redirect_uri="http://localhost:8000"
+        )
+        # flow.run_local_server()
+
+        print(flow.authorization_url())
+        return flow
+
+    def get_authorization_from_code(self, code):
+        flow = client.flow_from_clientsecrets(
+            self.CREDENTIALS_FILE, scope=self._API_SCOPES
+        )
+        # flow.fetch_token()
+        credentials = flow.step2_exchange(code=code, http=httplib2.Http())
+        # http = credential.authorize(httplib2.Http())
+        return credentials
 
     def authenticate_using_service_account(self, impersonation_email=""):
         """Authorizes an httplib2.Http instance using service account credentials."""
@@ -107,6 +157,9 @@ class DV360(object):
         http = credentials.authorize(httplib2.Http())
 
         return http
+
+    def get_sub_accounts(self) -> List[Dict]:
+        return []
 
     def build_discovery_url(self, version, label, key):
         """Builds a discovery url from which to fetch the proper discovery document.
@@ -142,22 +195,20 @@ class DV360(object):
         Returns:
           A googleapiclient.discovery.Resource instance used to interact with the Display & Video 360 API.
         """
-        http = self.authenticate_using_user_account()
-
         discovery_url = self.build_discovery_url(version, label, key)
 
         socket.setdefaulttimeout(180)
 
         # Initialize client for Display & Video 360 API
         dv360_service = discovery.build(
-            self._API_NAME, version, discoveryServiceUrl=discovery_url, http=http
+            self._API_NAME, version, discoveryServiceUrl=discovery_url, http=self.http
         )
 
-        dbm_service = discovery.build("doubleclickbidmanager", "v1.1", http=http)
+        dbm_service = discovery.build("doubleclickbidmanager", "v1.1", http=self.http)
 
         return dbm_service, dv360_service
 
-    def create_report(self, dbm_service, dv360_service):
+    def create_report(self):
         # Define DV360 report definition (i.e. metrics and filters)
         # List of official supported metrics and filter groups can be found in following url:
         # https://developers.google.com/bid-manager/v1.1/filters-metrics
@@ -179,13 +230,81 @@ class DV360(object):
         # Create new query using report definition
         try:
             operation = (
-                dbm_service.queries().createquery(body=report_definition).execute()
+                self.dbm_service.queries().createquery(body=report_definition).execute()
             )
             return operation["queryId"]
         except Exception as e:
             raise e
 
-    def get_full_report(self, dbm_service, query_id):
+    def get_report_df_for_account(
+            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+    ) -> DataFrame:
+        return pd.DataFrame()
+
+    def get_sub_accounts_report_df(
+            self, sub_accounts: List[str], date_range: str, dimensions: List[str]
+    ) -> DataFrame:
+        report_definition = {
+            "params": {
+                "type": dv360_config.REPORT_TYPE,
+                "metrics": dimensions,
+                "groupBys": dv360_config.REPORT_FILTER_GROUP,
+                "filters": [],
+            },
+            "metadata": {
+                "title": dv360_config.REPORT_TITLE,
+                "dataRange": date_range,
+                "format": dv360_config.REPORT_FORMAT,
+            },
+            "schedule": {"frequency": self.REPORT_FREQUENCY},
+        }
+        try:
+            operation = (
+                self.dbm_service.queries().createquery(body=report_definition).execute()
+            )
+            query_id = operation["queryId"]
+            if query_id:
+                @retry.Retry(
+                    predicate=retry.if_exception_type(Exception),
+                    initial=5,
+                    maximum=60,
+                    deadline=18000,
+                )
+                def check_get_query_completion(getquery_request):
+                    """Queries metadata to check for completion."""
+                    completion_response = getquery_request.execute()
+                    if completion_response["metadata"]["running"]:
+                        raise Exception("The operation has not completed.")
+                    return completion_response
+
+                query_request = self.dbm_service.queries().getquery(queryId=query_id)
+                query = check_get_query_completion(query_request)
+                try:
+                    if self.is_in_report_window(
+                            query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                    ):
+                        report_url = query["metadata"][
+                            "googleCloudStoragePathForLatestReport"
+                        ]
+                        report_df = pd.read_csv(report_url)
+                        report_df = report_df[
+                            report_df.Date.str.match(r'\d{4}/\d{2}/\d{2}', na=False)
+                        ]
+                        report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
+                        return report_df
+                    else:
+                        logger.error(
+                            f"No reports for queryId {query['queryId']} "
+                            f"in the last {self.REPORT_WINDOW} hours."
+                        )
+                except KeyError:
+                    logger.error('No report found for queryId "%s".' % query_id)
+            else:
+                raise "Query ID must not be none"
+        except Exception as e:
+            raise e
+
+    def get_full_report(self, query_id):
         if query_id:
             # Runs the given Queries.getquery request, retrying with an exponential
             # backoff. Returns completed operation. Will raise an exception if the
@@ -204,7 +323,7 @@ class DV360(object):
                 return completion_response
 
             # Call the API, getting the latest status for the passed queryId.
-            getquery_request = dbm_service.queries().getquery(queryId=query_id)
+            getquery_request = self.dbm_service.queries().getquery(queryId=query_id)
             query = check_get_query_completion(getquery_request)
             try:
                 now = datetime.now()  # current date and time
@@ -216,9 +335,8 @@ class DV360(object):
                 os.system(f"mkdir -p {self.REPORT_OUTPUT_DIR}")
                 # If it is recent enough...
                 if self.is_in_report_window(
-                    query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                        query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
                 ):
-
                     # Grab the report and write contents to a file.
                     report_url = query["metadata"][
                         "googleCloudStoragePathForLatestReport"
@@ -248,15 +366,62 @@ class DV360(object):
           A boolean indicating whether the given query's report run time is within
           the report window.
         """
-        report_time = datetime.fromtimestamp(int((run_time_ms)) / 1000)
+        report_time = datetime.fromtimestamp(int(run_time_ms) / 1000)
         earliest_time_in_range = datetime.now() - timedelta(hours=report_window)
         return report_time > earliest_time_in_range
+
+    def get_user_info(self):
+        """Send a request to the UserInfo API to retrieve the user's information.
+        Returns:
+          User information as a dict.
+        """
+        user_info_service = build(
+            serviceName='oauth2', version='v2',
+            http=self.http
+        )
+        user_info = None
+        try:
+            user_info = user_info_service.userinfo().get().execute()
+        except Exception as e:
+            logging.error('An error occurred: %s', e)
+        return user_info if user_info else {}
+
+    def extract_connection_info(self) -> Dict[str, Any]:
+        info = self.get_user_info()
+        data = {
+            "login_account": info.get("email", ""),
+            "num_sub_account": 0,
+            "login_account_id": info.get("id", "")
+        }
+        return data
 
 
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-
-    dv360 = DV360()
-    dbm_service_object, dv360_service_object = dv360.get_service(version="v1")
-    dv360.create_report(dbm_service_object, dv360_service_object)
+    with open("credential_cached_storage/cached_auth_None.json", "r") as f:
+        content = f.read()
+    # print(content)
+    dv360 = DV360(
+        frequency="ONE_TIME",
+        date_range="CURRENT_DAY",
+        report_window=24,
+        cached_credential=content
+    )
+    # flow = dv360.get_oauth2_authorize_url()
+    # pprint(dbm_service_object)
+    # pprint(dv360.dbm_service.queries().listqueries().execute())
+    print(dv360.extract_connection_info())
+    print(dv360.get_sub_accounts_report_df(
+        [], "CURRENT_DAY", REPORT_METRICS
+    ))
+    # query_id = dv360.create_report()
+    # pprint(query_id)
+    # query_id = 1000669689
+    # pprint(dv360.dbm_service.queries().getquery(queryId=query_id).execute())
+    # df = dv360.dbm_service.get_full_report_df(query_id)
+    # df = pd.read_csv(
+    #     "/home/quydx/datapal/datapal-compose/submodules/APIConnection/APIConnection/2022_09_17-172722.csv"
+    # )
+    # print(df)
+    # print(df.info())
