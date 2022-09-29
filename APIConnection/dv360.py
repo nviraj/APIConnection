@@ -292,6 +292,9 @@ class DV360:
                         ]
                         report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
                         report_df = report_df.rename(columns={"date": "date_start"})
+                        report_df["date_start"] = report_df["date_start"].apply(
+                            lambda d: d.replace("/", "-")
+                        )
                         report_df["date_stop"] = report_df["date_start"]
                         return report_df
                     else:
