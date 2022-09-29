@@ -1,7 +1,7 @@
 # Path to a file to cache auth credentials, so they survive multiple runs
 # of the application. This avoids prompting the user for authorization every
 # time the access token expires, by remembering the refresh token.
-CREDENTIAL_STORE_FILE = "credential_cached_storage/cached_auth.dat"
+CREDENTIAL_STORE_FILE = "cached_auth.dat"
 CREDENTIAL_STORE_DIR = "credential_cached_storage/"
 SERVICE_ACCOUNT_CREDS = "/home/quydx/Desktop/APIConnection/dv360-api-277821-3996c8539429.json"
 # Path to log file
