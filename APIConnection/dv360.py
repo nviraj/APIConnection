@@ -292,6 +292,7 @@ class DV360:
                         ]
                         report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
                         report_df = report_df.rename(columns={"date": "date_start"})
+                        report_df["date_stop"] = report_df["date_start"]
                         return report_df
                     else:
                         logger.error(
@@ -403,7 +404,7 @@ if __name__ == "__main__":
     with open("credential_cached_storage/cached_auth.dat", "r") as f:
         content = f.read()
     # print(content)
-    dv360 = DV360( 
+    dv360 = DV360(
         frequency="ONE_TIME",
         date_range="PREVIOUS_QUARTER",
         report_window=24,
@@ -418,7 +419,7 @@ if __name__ == "__main__":
     print(df)
     print(df["date_start"].unique().tolist())
     print(df.columns)
-    df.to_csv("dv360.csv")
+    # df.to_csv("dv360.csv")
 
     # query_id = dv360.create_report()
     # pprint(query_id)
