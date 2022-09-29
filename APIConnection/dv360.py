@@ -292,6 +292,7 @@ class DV360:
                             report_df.Date.str.match(r'\d{4}/\d{2}/\d{2}', na=False)
                         ]
                         report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
+                        report_df = report_df.rename(columns={"date": "date_start"})
                         return report_df
                     else:
                         logger.error(
@@ -401,22 +402,26 @@ class DV360:
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    with open("credential_cached_storage/cached_auth_None.json", "r") as f:
+    with open("credential_cached_storage/cached_auth.dat", "r") as f:
         content = f.read()
     # print(content)
-    dv360 = DV360(
+    dv360 = DV360( 
         frequency="ONE_TIME",
-        date_range="CURRENT_DAY",
+        date_range="PREVIOUS_QUARTER",
         report_window=24,
         cached_credential=content
     )
-    # flow = dv360.get_oauth2_authorize_url()
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
-    print(dv360.extract_connection_info())
-    print(dv360.get_sub_accounts_report_df(
-        [], "CURRENT_DAY", REPORT_METRICS
-    ))
+    # print(dv360.extract_connection_info())
+    df = dv360.get_sub_accounts_report_df(
+        [], "PREVIOUS_QUARTER", REPORT_METRICS
+    )
+    print(df)
+    print(df["date_start"].unique().tolist())
+    print(df.columns)
+    df.to_csv("dv360.csv")
+
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
