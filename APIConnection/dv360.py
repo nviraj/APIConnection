@@ -296,6 +296,7 @@ class DV360:
                             lambda d: d.replace("/", "-")
                         )
                         report_df["date_stop"] = report_df["date_start"]
+                        report_df["spend"] = report_df["budget_segment_budget"]
                         return report_df
                     else:
                         logger.error(
@@ -409,19 +410,23 @@ if __name__ == "__main__":
     # print(content)
     dv360 = DV360(
         frequency="ONE_TIME",
-        date_range="PREVIOUS_QUARTER",
+        date_range="CURRENT_DAY",
         report_window=24,
         cached_credential=content
     )
+
+    # LIST QUERIES, USERS
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
-    # print(dv360.extract_connection_info())
+    # pprint(dv360.dv360_service.users().list().execute())
+
+    # GET REPORTS
+    print(dv360.extract_connection_info())
     df = dv360.get_sub_accounts_report_df(
-        [], "PREVIOUS_QUARTER", REPORT_METRICS
+        [], "CURRENT_DAY", REPORT_METRICS
     )
     print(df)
-    print(df["date_start"].unique().tolist())
-    print(df.columns)
+    print(df[["clicks", "impressions", "spend"]])
     # df.to_csv("dv360.csv")
 
     # query_id = dv360.create_report()
