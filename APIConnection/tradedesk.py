@@ -2,6 +2,7 @@ import io
 import json
 import logging
 import time
+import traceback
 from typing import List, Dict
 
 import pandas as pd
@@ -197,13 +198,14 @@ class TTDConnection(BaseConnection):
                     df['ReportScheduleName'] == 'Coegi, Coegi (CAD)  | Yesterday | daily_ttd_feesreport'
                 ]
                 link = df.to_dict('records')[0]['ReportDeliveries'][0]['DownloadURL']
-                content = ttd.download_report(
+                content = self.download_report(
                     url=link, directory="./", report_name="temp",
                     write_to_file=False
                 )
                 df = pd.read_csv(io.StringIO(content))
                 return df
             except Exception as e:
+                print(traceback.format_exc())
                 logging.error(f"ERROR: can not download the report. Details {e}")
 
         else:
