@@ -1,3 +1,4 @@
+import io
 import json
 import logging
 import time
@@ -25,29 +26,33 @@ class TTDConnection(BaseConnection):
         self.username = username
         self.password = password
         if auth_token is None:
-            self.auth_token = self.login(username, password)
+            self.auth_token = self.login()
         else:
             self.auth_token = auth_token
+
+    def call_api(self, url: str, payload: dict):
+        headers = {"Content-Type": 'application/json', "TTD-Auth": self.auth_token}
+        res = requests.get(
+            url, headers=headers, json=payload
+        )
+
+        if res.ok:
+            res = json.loads(str(res.content, "utf-8"))
+            return res
+
+        else:
+            # If response code is not ok (200), print the resulting http error code with description
+            res.raise_for_status()
 
     @staticmethod
     def get_report_reference_url():
         return f"{TTD_API_URL}/v3/myreports/reportexecution/query/partners"
 
-    def login(self, login, password, minutes_to_expire=1440):
-        """login to account to generate auth Token
-
-        Args:
-            login (str): username
-            password (str): password
-            minutes_to_expire (int): expired time
-
-        Returns:
-            (str): auth token
-        """
+    def login(self, minutes_to_expire=1440):
         auth_url = f"{TTD_API_URL}/v3/authentication"
         payload = {
-            "Login": login,
-            "Password": password,
+            "Login": self.username,
+            "Password": self.password,
             "TokenExpirationInMinutes": minutes_to_expire,
         }
 
@@ -64,9 +69,10 @@ class TTDConnection(BaseConnection):
             myResponse.raise_for_status()
 
     def get_sub_accounts(self):
-        return []
+        # print(self.call_api("https://api.thetradedesk.com/v3/advertiser", payload={}))
+        return [{"id": "tm90ejd", "name": ""}]
 
-    def get_reports(self, partner_id, start_date, end_date, directory="./"):
+    def get_reports(self, partner_id, start_date, end_date, directory="./", get_urls_only=False):
         """Fetch report report
 
         Args:
@@ -104,13 +110,17 @@ class TTDConnection(BaseConnection):
         if myResponse.ok:
             try:
                 jData = json.loads(str(myResponse.content, "utf-8"))
-
+                urls = []
                 for report in jData["Result"]:
                     url = report["ReportDeliveries"][0]["DownloadURL"]
-                    report_name = report["ReportDeliveries"][0]["DeliveredPath"].split(
-                        "/"
-                    )[-1]
-                    self.download_report(url, directory, report_name)
+                    if get_urls_only:
+                        urls.append(url)
+                    else:
+                        report_name = report["ReportDeliveries"][0]["DeliveredPath"].split(
+                            "/"
+                        )[-1]
+                        self.download_report(url, directory, report_name)
+                return urls
             except Exception as e:
                 logging.error(f"ERROR: can not download the report. Details {e}")
 
@@ -122,10 +132,11 @@ class TTDConnection(BaseConnection):
 
         print("Execution time in seconds took: ", elapsed_time)
 
-    def download_report(self, url, directory, report_name):
+    def download_report(self, url, directory, report_name, write_to_file=True):
         """Download report from url
 
         Args:
+            write_to_file:
             url (str): URL
             directory (str): local directory to store data
             report_name (str): report file name
@@ -137,9 +148,11 @@ class TTDConnection(BaseConnection):
         response = requests.get(url, headers=headers)
 
         try:
-
-            with open(f"{directory}/{report_name}", "w") as f:
-                f.write(str(response.content.decode("utf-8")))
+            if write_to_file:
+                with open(f"{directory}/{report_name}", "w") as f:
+                    f.write(str(response.content.decode("utf-8")))
+            else:
+                return str(response.content.decode("utf-8"))
         except Exception as e:
             logging.error(f"ERROR: can not download {url}. Details {e}")
 
@@ -180,9 +193,53 @@ class TTDConnection(BaseConnection):
                 jData = json.loads(str(myResponse.content, "utf-8"))
                 print(jData)
                 df = pd.DataFrame(jData["Result"])
+                df = df[
+                    df['ReportScheduleName'] == 'Coegi, Coegi (CAD)  | Yesterday | daily_ttd_feesreport'
+                ]
+                link = df.to_dict('records')[0]['ReportDeliveries'][0]['DownloadURL']
+                content = ttd.download_report(
+                    url=link, directory="./", report_name="temp",
+                    write_to_file=False
+                )
+                df = pd.read_csv(io.StringIO(content))
                 return df
             except Exception as e:
                 logging.error(f"ERROR: can not download the report. Details {e}")
 
         else:
             myResponse.raise_for_status()
+
+
+if __name__ == "__main__":
+    ttd = TTDConnection(
+        username="ttd_api2_tm90ejd@coegi.com",
+        password="Coegi2018!"
+    )
+    print(ttd.login())
+    print(ttd.extract_connection_info())
+    accounts = ttd.get_sub_accounts()
+    # urls = ttd.get_reports(
+    #     partner_id=accounts[0]["id"],
+    #     start_date="2022-09-01",
+    #     end_date="2022-09-02",
+    #     directory="./report",
+    #     get_urls_only=True
+    # )
+    # print(urls)
+    # df = ttd.get_report_df_for_account(
+    #     account=accounts[0]["id"],
+    #     start_date="2022-09-01",
+    #     end_date="2022-09-02",
+    #     dimensions=[]
+    # )
+    df = ttd.get_sub_accounts_report_df(
+        [accounts[0]["id"]],
+        start_date="2022-09-01",
+        end_date="2022-09-02",
+        dimensions=[]
+    )
+    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.width', 1000)
+    pd.set_option('display.max_colwidth', None)
+    print(df)
