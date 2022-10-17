@@ -151,15 +151,18 @@ class TwitterConnection(BaseConnection):
                 row["Date stop"] = str(data["date_stop"])
                 row["Campaign name"] = campaign_data[id]["name"]
                 row["Campaign id"] = campaign_data[id]["id"]
-
-                if campaign_data[id]["objective"] == "VIDEO_VIEWS":
-                    row["Objective"] = "Video views"
-                elif campaign_data[id]["objective"] == "CUSTOM":
-                    row["Objective"] = "Custom"
-                elif campaign_data[id]["objective"] == "ENGAGEMENTS":
-                    row["Objective"] = "Engagements"
-                elif campaign_data[id]["objective"] == "WEBSITE_CLICKS":
-                    row["Objective"] = "Website clicks"
+                try:
+                    if campaign_data[id]["objective"] == "VIDEO_VIEWS":
+                        row["Objective"] = "Video views"
+                    elif campaign_data[id]["objective"] == "CUSTOM":
+                        row["Objective"] = "Custom"
+                    elif campaign_data[id]["objective"] == "ENGAGEMENTS":
+                        row["Objective"] = "Engagements"
+                    elif campaign_data[id]["objective"] == "WEBSITE_CLICKS":
+                        row["Objective"] = "Website clicks"
+                except Exception as e:
+                    print(e)
+                    row["Objective"] = "Null"
 
                 row["Status"] = campaign_data[id]["status"]
                 row["Account name"] = campaign_data[id]["account_name"]
