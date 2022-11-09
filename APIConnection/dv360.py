@@ -291,6 +291,12 @@ class DV360:
                             report_df.Date.str.match(r'\d{4}/\d{2}/\d{2}', na=False)
                         ]
                         report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
+                        report_df = report_df.rename(columns={"date": "date_start"})
+                        report_df["date_start"] = report_df["date_start"].apply(
+                            lambda d: d.replace("/", "-")
+                        )
+                        report_df["date_stop"] = report_df["date_start"]
+                        report_df["spend"] = report_df["budget_segment_budget"]
                         return report_df
                     else:
                         logger.error(
@@ -399,7 +405,7 @@ class DV360:
 if __name__ == "__main__":
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    with open("credential_cached_storage/cached_auth_None.json", "r") as f:
+    with open("credential_cached_storage/cached_auth.dat", "r") as f:
         content = f.read()
     # print(content)
     dv360 = DV360(
@@ -408,13 +414,21 @@ if __name__ == "__main__":
         report_window=24,
         cached_credential=content
     )
-    # flow = dv360.get_oauth2_authorize_url()
+
+    # LIST QUERIES, USERS
     # pprint(dbm_service_object)
     # pprint(dv360.dbm_service.queries().listqueries().execute())
+    # pprint(dv360.dv360_service.users().list().execute())
+
+    # GET REPORTS
     print(dv360.extract_connection_info())
-    print(dv360.get_sub_accounts_report_df(
+    df = dv360.get_sub_accounts_report_df(
         [], "CURRENT_DAY", REPORT_METRICS
-    ))
+    )
+    print(df)
+    print(df[["clicks", "impressions", "spend"]])
+    # df.to_csv("dv360.csv")
+
     # query_id = dv360.create_report()
     # pprint(query_id)
     # query_id = 1000669689
