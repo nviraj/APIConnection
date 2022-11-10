@@ -95,7 +95,7 @@ class FBConnection(BaseConnection):
             return pd.DataFrame()
 
     def save_insight_ads_accounts_to_excel(
-            self, start_date, end_date, path="./", fields=None, subaccount_ids=None
+            self, start_date, end_date, path="./", fields=None, sub_account_ids=None
     ):
         """Save insight ads data to excel files
 
@@ -104,17 +104,18 @@ class FBConnection(BaseConnection):
             end_date (str): string format of 'YYYY-MM-DD'
             path (str): path or directory
             fields (list(str)): fields list
-            subaccount_ids:
+            sub_account_ids:
         Returns:
             None
         """
 
-        if subaccount_ids is None:
-            subaccount_ids = self.get_sub_accounts()
+        if sub_account_ids is None:
+            sub_account_ids = [s["id"] for s in self.get_sub_accounts()]
+
         if not os.path.exists(path):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)
 
-        for id in subaccount_ids:
+        for id in sub_account_ids:
             if id in self.get_sub_accounts():
                 self.save_insight_ads_data_for_account_to_excel(
                     id, start_date, end_date, f"{path}/{id}.xls", fields
@@ -165,13 +166,4 @@ class FBConnection(BaseConnection):
         return data
 
 
-if __name__ == "__main__":
-    conn = FBConnection(access_token=FB_ACCESS_TOKEN)
-    print(conn.accounts)
-    print(conn.get_sub_accounts())
-    # print(conn.get_sub_accounts_report_df(
-    #     start_date="2022-01-01",
-    #     end_date="2022-08-02",
-    #     dimensions=["clicks", "conversions"],
-    #     sub_accounts=["act_27385599"]
-    # ))
+

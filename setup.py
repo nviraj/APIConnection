@@ -49,7 +49,7 @@ setup(
         'oauth2client==4.1.3',
         'oauthlib==3.2.1',
         'paramiko==2.7.2',
-        'protobuf==4.21.4',
+        'protobuf==3.20.1',
         'pyasn1==0.4.8',
         'pyasn1-modules==0.2.8',
         'pycountry==20.7.3',
@@ -68,7 +68,7 @@ setup(
         'yarl==1.6.3',
         'us==2.0.2',
         'pytrends==4.7.3',
-        'twitter-ads==10.0.0',
+        'twitter-ads==11.0.0',
         'facebook-sdk==3.1.0',
         'tweepy==4.10.0'
     ],

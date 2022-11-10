@@ -62,7 +62,7 @@ class TwitterConnection(BaseConnection):
         self.user_api = self.tw_user_api()
 
     def tw_user_api(self):
-        auth = tweepy.OAuthHandler(self.consumer_key, self.secret)
+        auth = tweepy.OAuth1UserHandler(self.consumer_key, self.secret)
         auth.set_access_token(self.token, self.token_secret)
         api = tweepy.API(auth)
         return api
