@@ -3,7 +3,9 @@
 # time the access token expires, by remembering the refresh token.
 CREDENTIAL_STORE_FILE = "cached_auth.dat"
 CREDENTIAL_STORE_DIR = "credential_cached_storage/"
-SERVICE_ACCOUNT_CREDS = "/home/quydx/Desktop/APIConnection/dv360-api-277821-3996c8539429.json"
+SERVICE_ACCOUNT_CREDS = (
+    "/home/quydx/Desktop/APIConnection/dv360-api-277821-3996c8539429.json"
+)
 # Path to log file
 LOG_FILE = "dv360.log"
 # Logging level
@@ -11,7 +13,7 @@ LOG_LEVEL = "debug"
 
 REPORT_TITLE = "DV360 Automation API-generated report"
 # Refer https://developers.google.com/bid-manager/v1/reports to configure your report template
-# List of allowed filters and metrics can be found here: https://developers.google.com/bid-manager/v1.1/filters-metrics
+# allowed filters and metrics: https://developers.google.com/bid-manager/v1.1/filters-metrics
 REPORT_FORMAT = "csv"
 REPORT_TYPE = "TYPE_GENERAL"
 REPORT_METRICS = [
@@ -49,7 +51,7 @@ REPORT_FILTER_GROUP = [
     # "FILTER_CREATIVE_ID",
     # "FILTER_CREATIVE_STATUS",
     # "FILTER_CREATIVE_SOURCE",
-    # "FILTER_ADVERTISER_CURRENCY",
+    "FILTER_ADVERTISER_CURRENCY",
     # "FILTER_FLOODLIGHT_ACTIVITY",
     # "FILTER_FLOODLIGHT_ACTIVITY_ID",
     # "FILTER_CITY",
