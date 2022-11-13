@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
 from pandas import DataFrame
+
+from APIConnection.logger import logger
+from APIConnection.utils import timeit
 
 
 class BaseConnection(ABC):
@@ -20,17 +23,19 @@ class BaseConnection(ABC):
         pass
 
     @abstractmethod
-    def get_report_df_for_account(
+    @timeit
+    async def get_report_df_for_account(
             self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
         pass
 
-    def get_sub_accounts_report_df(
+    async def get_sub_accounts_report_df(
             self, sub_accounts: List[str], start_date, end_date, dimensions
     ) -> DataFrame:
         final_df = pd.DataFrame()
         for account in sub_accounts:
-            df = self.get_report_df_for_account(account, start_date, end_date, dimensions)
+            logger.debug(f"Process {account}")
+            df = await self.get_report_df_for_account(account, start_date, end_date, dimensions)
             if not df.empty:
                 df["account_id"] = account
             final_df = pd.concat([final_df, df])

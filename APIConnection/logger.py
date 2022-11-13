@@ -104,3 +104,6 @@ def get_logger(logger_name, file_name=None, log_level=None):
         del logger.handlers[:]
 
     return logger
+
+
+logger = get_logger("API_Connection", log_level="debug")

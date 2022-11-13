@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import errno
 import logging
 import os
 import time
 from abc import ABC
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
 from facebook import GraphAPI
@@ -17,10 +18,11 @@ from pandas import DataFrame
 from APIConnection.base_connection import BaseConnection
 from APIConnection.exceptions import FBTimeOut
 from APIConnection.settings import AD_INSIGHT_FIELD, FB_ACCESS_TOKEN
+from APIConnection.utils import timeit
 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
-TIMEOUT = 100
+TIMEOUT = 60 * 5
 FB_API_URL = "https://developers.facebook.com"
 EXCLUDE_FB_ACC_INSIGHT_FIELDS = ["total_postbacks"]
 
@@ -56,7 +58,8 @@ class FBConnection(BaseConnection):
         fields = list(fields_df["Field 75"])
         return [field for field in fields if field not in EXCLUDE_FB_ACC_INSIGHT_FIELDS]
 
-    def get_report_df_for_account(
+    @timeit
+    async def get_report_df_for_account(
             self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
         """Fetch insight ads data for an account account
@@ -82,7 +85,7 @@ class FBConnection(BaseConnection):
             if dimensions is None:
                 dimensions = FBConnection.get_ads_insights_variable_list()
             async_job = account.get_insights(fields=dimensions, params=params, is_async=True)
-            result_cursor = self._wait_for_async_job(async_job)
+            result_cursor = await self.wait_for_async_job(async_job)
             data = [item for item in result_cursor]
             return pd.DataFrame(data)
         except FBTimeOut:
@@ -121,7 +124,7 @@ class FBConnection(BaseConnection):
                     id, start_date, end_date, f"{path}/{id}.xls", fields
                 )
 
-    def save_insight_ads_data_for_account_to_excel(
+    async def save_insight_ads_data_for_account_to_excel(
             self, ad_account_id, start_date, end_date, file_path, fields=None
     ):
         """Save insight ads data to excel file
@@ -139,17 +142,18 @@ class FBConnection(BaseConnection):
         logging.info(f"Start processing account {ad_account_id}")
         if fields is None:
             fields = FBConnection.get_ads_insights_variable_list()
-        df_insight = self.get_report_df_for_account(
+        df_insight = await self.get_report_df_for_account(
             ad_account_id, start_date, end_date, fields
         )
         if df_insight:
             df_insight.to_excel(file_path, index=False, merge_cells=True)
 
-    def _wait_for_async_job(self, job):
+    @staticmethod
+    async def wait_for_async_job(job):
         for loop in range(TIMEOUT):
             if loop == TIMEOUT - 1:
                 raise FBTimeOut
-            time.sleep(2)
+            await asyncio.sleep(2)
             job = job.api_get()
             status = job[AdReportRun.Field.async_status]
             if status == "Job Completed":
@@ -164,6 +168,3 @@ class FBConnection(BaseConnection):
             "login_account_id": user_info.get("id", "")
         }
         return data
-
-
-
