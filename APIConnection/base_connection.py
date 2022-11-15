@@ -1,15 +1,14 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import pandas as pd
 from pandas import DataFrame
 
-from APIConnection.logger import logger
 from APIConnection.utils import timeit
 
 
 class BaseConnection(ABC):
-
     @abstractmethod
     def __init__(self):
         pass
@@ -25,20 +24,26 @@ class BaseConnection(ABC):
     @abstractmethod
     @timeit
     async def get_report_df_for_account(
-            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+        self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
         pass
 
     async def get_sub_accounts_report_df(
-            self, sub_accounts: List[str], start_date, end_date, dimensions
+        self, sub_accounts: List[str], start_date, end_date, dimensions
     ) -> DataFrame:
         final_df = pd.DataFrame()
-        for account in sub_accounts:
-            logger.debug(f"Process {account}")
-            df = await self.get_report_df_for_account(account, start_date, end_date, dimensions)
+        # for account in sub_accounts:
+        #     logger.debug(f"Process {account}")
+        dfs = await asyncio.gather(
+            *[
+                self.get_report_df_for_account(a, start_date, end_date, dimensions)
+                for a in sub_accounts
+            ]
+        )
+        for df in dfs:
+            # df = await self.get_report_df_for_account(account, start_date, end_date, dimensions)
             if not df.empty:
-                df["account_id"] = account
-            final_df = pd.concat([final_df, df])
+                final_df = pd.concat([final_df, df])
         final_df.columns = [col.lower().replace(" ", "_") for col in final_df.columns]
         return final_df
 

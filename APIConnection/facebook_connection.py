@@ -3,8 +3,6 @@ import asyncio
 import errno
 import logging
 import os
-import time
-from abc import ABC
 from typing import Dict, List
 
 import pandas as pd
@@ -17,10 +15,11 @@ from pandas import DataFrame
 
 from APIConnection.base_connection import BaseConnection
 from APIConnection.exceptions import FBTimeOut
-from APIConnection.settings import AD_INSIGHT_FIELD, FB_ACCESS_TOKEN
+from APIConnection.logger import logger
+from APIConnection.settings import AD_INSIGHT_FIELD
 from APIConnection.utils import timeit
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
 TIMEOUT = 60 * 5
 FB_API_URL = "https://developers.facebook.com"
@@ -60,7 +59,7 @@ class FBConnection(BaseConnection):
 
     @timeit
     async def get_report_df_for_account(
-            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+        self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
         """Fetch insight ads data for an account account
 
@@ -84,7 +83,11 @@ class FBConnection(BaseConnection):
             account = AdAccount(account)
             if dimensions is None:
                 dimensions = FBConnection.get_ads_insights_variable_list()
-            async_job = account.get_insights(fields=dimensions, params=params, is_async=True)
+            if "account_id" not in dimensions:
+                dimensions.append("account_id")
+            async_job = account.get_insights(
+                fields=dimensions, params=params, is_async=True
+            )
             result_cursor = await self.wait_for_async_job(async_job)
             data = [item for item in result_cursor]
             return pd.DataFrame(data)
@@ -92,13 +95,11 @@ class FBConnection(BaseConnection):
             logging.error(f"TIMEOUT: Can not get data for account {account}")
             return pd.DataFrame()
         except Exception as e:
-            logging.error(
-                f"ERROR: Can not get data for account {account}. Detail {e}"
-            )
+            logging.error(f"ERROR: Can not get data for account {account}. Detail {e}")
             return pd.DataFrame()
 
     def save_insight_ads_accounts_to_excel(
-            self, start_date, end_date, path="./", fields=None, sub_account_ids=None
+        self, start_date, end_date, path="./", fields=None, sub_account_ids=None
     ):
         """Save insight ads data to excel files
 
@@ -125,7 +126,7 @@ class FBConnection(BaseConnection):
                 )
 
     async def save_insight_ads_data_for_account_to_excel(
-            self, ad_account_id, start_date, end_date, file_path, fields=None
+        self, ad_account_id, start_date, end_date, file_path, fields=None
     ):
         """Save insight ads data to excel file
 
@@ -153,6 +154,7 @@ class FBConnection(BaseConnection):
         for loop in range(TIMEOUT):
             if loop == TIMEOUT - 1:
                 raise FBTimeOut
+            logger.debug(f"{loop} Wait for report complete")
             await asyncio.sleep(2)
             job = job.api_get()
             status = job[AdReportRun.Field.async_status]
@@ -165,6 +167,6 @@ class FBConnection(BaseConnection):
         data = {
             "login_account": user_info.get("email", ""),
             "num_sub_account": len(self.get_sub_accounts()),
-            "login_account_id": user_info.get("id", "")
+            "login_account_id": user_info.get("id", ""),
         }
         return data
