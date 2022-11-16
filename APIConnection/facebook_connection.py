@@ -153,17 +153,18 @@ class FBConnection(BaseConnection):
     @staticmethod
     async def wait_for_async_job(job):
         for loop in range(TIMEOUT):
+            ts = time.time()
             if loop == TIMEOUT - 1:
                 raise FBTimeOut
-            ts = time.time()
             job = job.api_get()
             status = job[AdReportRun.Field.async_status]
-            te = time.time() - ts
-            logger.debug(f"wait take {te} seconds")
+            name = job[AdReportRun.Field.account_id]
             if status == "Job Completed":
                 return job.get_result()
-            logger.debug(f"{loop} Wait for report complete")
-            await asyncio.sleep(2)
+            te = time.time() - ts
+            logger.debug(f"wait take {te} seconds")
+            logger.debug(f"{name} {loop} Wait for report complete")
+            await asyncio.sleep(5)
 
     def extract_connection_info(self):
         graph = GraphAPI(self.access_token)

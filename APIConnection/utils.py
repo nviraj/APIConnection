@@ -1,5 +1,5 @@
 import time
-from asyncio import AbstractEventLoop, get_running_loop, sleep
+from asyncio import AbstractEventLoop, sleep
 from calendar import monthrange
 from datetime import date
 
@@ -13,20 +13,23 @@ class Monitor:
         self.active_tasks = None
         self._interval = interval
 
-    def start(self):
-        loop = get_running_loop()
-        loop.create_task(self.monitor_loop(loop))
+    # def start(self):
+    #     loop = get_running_loop()
+    #     loop.create_task(self.monitor_loop(loop))
 
     async def monitor_loop(self, loop: AbstractEventLoop):
         logger.debug("Monitor loop started")
-        while loop.is_running():
+        # while loop.is_running():
+        while True:
             start = loop.time()
+            # ts = time.time()
             await sleep(self._interval)
             time_slept = loop.time() - start
+            # time_slept = time.time() - ts
             self.lag = time_slept - self._interval
             # tasks = [t for t in Task.all_tasks(loop) if not t.done()]
             # self.active_tasks = len(tasks)
-            logger.debug(f"Lag time is {self.lag} s")
+            logger.info(f"Lag time is {self.lag} s")
             # logger.debug(f"active_tasks = {self.active_tasks}")
 
 

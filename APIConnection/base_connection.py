@@ -1,11 +1,12 @@
 import asyncio
+import time
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import pandas as pd
 from pandas import DataFrame
 
-from APIConnection.utils import Monitor, timeit
+from APIConnection.utils import timeit
 
 
 class BaseConnection(ABC):
@@ -34,9 +35,17 @@ class BaseConnection(ABC):
         final_df = pd.DataFrame()
         # for account in sub_accounts:
         #     logger.debug(f"Process {account}")
-        m = Monitor()
-        loop = asyncio.get_running_loop()
-        tasks = [m.monitor_loop(loop)]
+        # m = Monitor()
+        # loop = asyncio.get_running_loop()
+
+        async def heartbeat():
+            while True:
+                start = time.time()
+                await asyncio.sleep(0.5)
+                delay = time.time() - start - 0.5
+                print(f"heartbeat delay = {delay:.3f}s")
+
+        tasks = [heartbeat()]
         tasks += [
             self.get_report_df_for_account(a, start_date, end_date, dimensions)
             for a in sub_accounts

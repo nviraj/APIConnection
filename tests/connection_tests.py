@@ -61,7 +61,7 @@ class ConnectionTesting(TestCase):
         # asyncio.run(m.monitor_loop(loop))
         # loop.set_debug(True)
         df = loop.run_until_complete(conn.get_sub_accounts_report_df(
-            sub_accounts=[s["id"] for s in conn.get_sub_accounts()][:100],
+            sub_accounts=[s["id"] for s in conn.get_sub_accounts()][:20],
             start_date="2022-01-01",
             end_date="2022-11-15",
             dimensions=None
