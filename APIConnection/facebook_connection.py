@@ -3,6 +3,7 @@ import asyncio
 import errno
 import logging
 import os
+import time
 from typing import Dict, List
 
 import pandas as pd
@@ -154,12 +155,15 @@ class FBConnection(BaseConnection):
         for loop in range(TIMEOUT):
             if loop == TIMEOUT - 1:
                 raise FBTimeOut
-            logger.debug(f"{loop} Wait for report complete")
-            await asyncio.sleep(2)
+            ts = time.time()
             job = job.api_get()
             status = job[AdReportRun.Field.async_status]
+            te = time.time() - ts
+            logger.debug(f"wait take {te} seconds")
             if status == "Job Completed":
                 return job.get_result()
+            logger.debug(f"{loop} Wait for report complete")
+            await asyncio.sleep(2)
 
     def extract_connection_info(self):
         graph = GraphAPI(self.access_token)

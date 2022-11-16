@@ -6,7 +6,7 @@ import pandas as pd
 from APIConnection.facebook_connection import FBConnection
 from APIConnection.logger import logger
 from APIConnection.settings import FB_ACCESS_TOKEN
-from APIConnection.utils import timeit
+from APIConnection.utils import timeit, Monitor
 
 
 class ConnectionTesting(TestCase):
@@ -57,7 +57,9 @@ class ConnectionTesting(TestCase):
     def test_run_full_report_account(self):
         conn = FBConnection(access_token=FB_ACCESS_TOKEN)
         loop = asyncio.get_event_loop()
-        loop.set_debug(True)
+        # m = Monitor()
+        # asyncio.run(m.monitor_loop(loop))
+        # loop.set_debug(True)
         df = loop.run_until_complete(conn.get_sub_accounts_report_df(
             sub_accounts=[s["id"] for s in conn.get_sub_accounts()][:100],
             start_date="2022-01-01",

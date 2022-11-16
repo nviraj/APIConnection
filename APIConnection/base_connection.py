@@ -5,7 +5,7 @@ from typing import Dict, List
 import pandas as pd
 from pandas import DataFrame
 
-from APIConnection.utils import timeit
+from APIConnection.utils import Monitor, timeit
 
 
 class BaseConnection(ABC):
@@ -34,12 +34,14 @@ class BaseConnection(ABC):
         final_df = pd.DataFrame()
         # for account in sub_accounts:
         #     logger.debug(f"Process {account}")
-        dfs = await asyncio.gather(
-            *[
-                self.get_report_df_for_account(a, start_date, end_date, dimensions)
-                for a in sub_accounts
-            ]
-        )
+        m = Monitor()
+        loop = asyncio.get_running_loop()
+        tasks = [m.monitor_loop(loop)]
+        tasks += [
+            self.get_report_df_for_account(a, start_date, end_date, dimensions)
+            for a in sub_accounts
+        ]
+        dfs = await asyncio.gather(*tasks)
         for df in dfs:
             # df = await self.get_report_df_for_account(account, start_date, end_date, dimensions)
             if not df.empty:
