@@ -18,7 +18,6 @@ from APIConnection.base_connection import BaseConnection
 from APIConnection.exceptions import FBTimeOut
 from APIConnection.logger import logger
 from APIConnection.settings import AD_INSIGHT_FIELD
-from APIConnection.utils import timeit
 
 logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
@@ -58,7 +57,6 @@ class FBConnection(BaseConnection):
         fields = list(fields_df["Field 75"])
         return [field for field in fields if field not in EXCLUDE_FB_ACC_INSIGHT_FIELDS]
 
-    @timeit
     async def get_report_df_for_account(
         self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
@@ -163,8 +161,8 @@ class FBConnection(BaseConnection):
                 return job.get_result()
             te = time.time() - ts
             logger.debug(f"wait take {te} seconds")
-            logger.debug(f"{name} {loop} Wait for report complete")
-            await asyncio.sleep(5)
+            logger.debug(f"{name} {status} {loop} Wait for report complete")
+            await asyncio.sleep(1)
 
     def extract_connection_info(self):
         graph = GraphAPI(self.access_token)

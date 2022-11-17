@@ -1,3 +1,4 @@
+import asyncio
 import time
 from asyncio import AbstractEventLoop, sleep
 from calendar import monthrange
@@ -31,6 +32,14 @@ class Monitor:
             # self.active_tasks = len(tasks)
             logger.info(f"Lag time is {self.lag} s")
             # logger.debug(f"active_tasks = {self.active_tasks}")
+
+
+async def heartbeat():
+    while True:
+        start = time.time()
+        await asyncio.sleep(0.5)
+        delay = time.time() - start - 0.5
+        print(f"heartbeat delay = {delay:.3f}s")
 
 
 def get_last_date_of_month(year: int, month: int) -> date:
