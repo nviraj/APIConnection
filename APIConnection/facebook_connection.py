@@ -21,7 +21,7 @@ from APIConnection.settings import AD_INSIGHT_FIELD
 
 logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
-TIMEOUT = 60 * 5
+TIMEOUT = 20
 FB_API_URL = "https://developers.facebook.com"
 EXCLUDE_FB_ACC_INSIGHT_FIELDS = ["total_postbacks"]
 
@@ -151,6 +151,7 @@ class FBConnection(BaseConnection):
     @staticmethod
     async def wait_for_async_job(job):
         for loop in range(TIMEOUT):
+            logger.debug("wait start")
             ts = time.time()
             if loop == TIMEOUT - 1:
                 raise FBTimeOut
@@ -162,7 +163,7 @@ class FBConnection(BaseConnection):
             te = time.time() - ts
             logger.debug(f"wait take {te} seconds")
             logger.debug(f"{name} {status} {loop} Wait for report complete")
-            await asyncio.sleep(1)
+            await asyncio.sleep(20)
 
     def extract_connection_info(self):
         graph = GraphAPI(self.access_token)
