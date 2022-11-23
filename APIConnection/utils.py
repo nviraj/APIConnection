@@ -39,7 +39,7 @@ async def heartbeat():
         start = time.time()
         await asyncio.sleep(0.5)
         delay = time.time() - start - 0.5
-        print(f"heartbeat delay = {delay:.3f}s")
+        logger.info(f"heartbeat delay = {delay:.3f}s")
 
 
 def get_last_date_of_month(year: int, month: int) -> date:
@@ -66,7 +66,7 @@ def timeit(method):
             name = kwargs.get("log_name", method.__name__.upper())
             kwargs["log_time"][name] = int(te - ts)
         else:
-            print("%r  %2.22f s" % (method.__name__, te - ts))
+            logger.info("%r  %2.22f s" % (method.__name__, te - ts))
         return result
 
     return timed

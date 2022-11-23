@@ -3,18 +3,19 @@ import json
 import logging
 import time
 import traceback
-from typing import List, Dict
+from typing import List
 
 import pandas as pd
 import requests
 from pandas import DataFrame
 
 from APIConnection.base_connection import BaseConnection
+from APIConnection.logger import logger
 
 # from .exceptions import FBTimeOut
 
 # logging.basicConfig(filename="ttd.log", level=logging.DEBUG)
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
 TIMEOUT = 1000
 TTD_API_URL = "https://api.thetradedesk.com"
@@ -32,10 +33,8 @@ class TTDConnection(BaseConnection):
             self.auth_token = auth_token
 
     def call_api(self, url: str, payload: dict):
-        headers = {"Content-Type": 'application/json', "TTD-Auth": self.auth_token}
-        res = requests.get(
-            url, headers=headers, json=payload
-        )
+        headers = {"Content-Type": "application/json", "TTD-Auth": self.auth_token}
+        res = requests.get(url, headers=headers, json=payload)
 
         if res.ok:
             res = json.loads(str(res.content, "utf-8"))
@@ -70,10 +69,12 @@ class TTDConnection(BaseConnection):
             myResponse.raise_for_status()
 
     def get_sub_accounts(self):
-        # print(self.call_api("https://api.thetradedesk.com/v3/advertiser", payload={}))
+        #  logger.info(self.call_api("https://api.thetradedesk.com/v3/advertiser", payload={}))
         return [{"id": "tm90ejd", "name": ""}]
 
-    def get_reports(self, partner_id, start_date, end_date, directory="./", get_urls_only=False):
+    def get_reports(
+        self, partner_id, start_date, end_date, directory="./", get_urls_only=False
+    ):
         """Fetch report report
 
         Args:
@@ -117,9 +118,9 @@ class TTDConnection(BaseConnection):
                     if get_urls_only:
                         urls.append(url)
                     else:
-                        report_name = report["ReportDeliveries"][0]["DeliveredPath"].split(
-                            "/"
-                        )[-1]
+                        report_name = report["ReportDeliveries"][0][
+                            "DeliveredPath"
+                        ].split("/")[-1]
                         self.download_report(url, directory, report_name)
                 return urls
             except Exception as e:
@@ -131,7 +132,7 @@ class TTDConnection(BaseConnection):
 
         elapsed_time = time.time() - start_time
 
-        print("Execution time in seconds took: ", elapsed_time)
+        logger.info("Execution time in seconds took: ", elapsed_time)
 
     def download_report(self, url, directory, report_name, write_to_file=True):
         """Download report from url
@@ -161,12 +162,12 @@ class TTDConnection(BaseConnection):
         data = {
             "login_account": self.username,
             "num_sub_account": 0,
-            "login_account_id": None
+            "login_account_id": None,
         }
         return data
 
     def get_report_df_for_account(
-            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+        self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
 
         payload = {
@@ -192,56 +193,20 @@ class TTDConnection(BaseConnection):
         if myResponse.ok:
             try:
                 jData = json.loads(str(myResponse.content, "utf-8"))
-                print(jData)
                 df = pd.DataFrame(jData["Result"])
                 df = df[
-                    df['ReportScheduleName'] == 'Coegi, Coegi (CAD)  | Yesterday | daily_ttd_feesreport'
+                    df["ReportScheduleName"]
+                    == "Coegi, Coegi (CAD)  | Yesterday | daily_ttd_feesreport"
                 ]
-                link = df.to_dict('records')[0]['ReportDeliveries'][0]['DownloadURL']
+                link = df.to_dict("records")[0]["ReportDeliveries"][0]["DownloadURL"]
                 content = self.download_report(
-                    url=link, directory="./", report_name="temp",
-                    write_to_file=False
+                    url=link, directory="./", report_name="temp", write_to_file=False
                 )
                 df = pd.read_csv(io.StringIO(content))
                 return df
             except Exception as e:
-                print(traceback.format_exc())
+                logger.error(traceback.format_exc())
                 logging.error(f"ERROR: can not download the report. Details {e}")
 
         else:
             myResponse.raise_for_status()
-
-
-if __name__ == "__main__":
-    ttd = TTDConnection(
-        username="ttd_api2_tm90ejd@coegi.com",
-        password="Coegi2018!"
-    )
-    print(ttd.login())
-    print(ttd.extract_connection_info())
-    accounts = ttd.get_sub_accounts()
-    # urls = ttd.get_reports(
-    #     partner_id=accounts[0]["id"],
-    #     start_date="2022-09-01",
-    #     end_date="2022-09-02",
-    #     directory="./report",
-    #     get_urls_only=True
-    # )
-    # print(urls)
-    # df = ttd.get_report_df_for_account(
-    #     account=accounts[0]["id"],
-    #     start_date="2022-09-01",
-    #     end_date="2022-09-02",
-    #     dimensions=[]
-    # )
-    df = ttd.get_sub_accounts_report_df(
-        [accounts[0]["id"]],
-        start_date="2022-09-01",
-        end_date="2022-09-02",
-        dimensions=[]
-    )
-    pd.set_option('display.max_rows', 500)
-    pd.set_option('display.max_columns', 500)
-    pd.set_option('display.width', 1000)
-    pd.set_option('display.max_colwidth', None)
-    print(df)

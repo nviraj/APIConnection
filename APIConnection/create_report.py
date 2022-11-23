@@ -17,12 +17,13 @@
 """An end-to-end example of how to create and configure a standard report."""
 
 import argparse
-from datetime import date
-from datetime import timedelta
 import sys
+from datetime import date, timedelta
 
 import dfareporting_utils
 from oauth2client import client
+
+from APIConnection.logger import logger
 
 # Declare command-line flags.
 argparser = argparse.ArgumentParser(add_help=False)
@@ -57,7 +58,7 @@ def main(argv):
         report = insert_report_resource(service, profile_id, report)
 
     except client.AccessTokenRefreshError:
-        print(
+        logger.info(
             "The credentials have been revoked or expired, please re-run the "
             "application to re-authorize"
         )
@@ -74,7 +75,7 @@ def create_report_resource():
         "format": "CSV",
     }
 
-    print(
+    logger.info(
         'Creating %s report resource with name "%s".' % (report["type"], report["name"])
     )
 
@@ -119,7 +120,7 @@ def define_report_criteria(report):
     # Add the criteria to the report resource.
     report["criteria"] = criteria
 
-    print("\nAdded report criteria:\n%s" % criteria)
+    logger.info("\nAdded report criteria:\n%s" % criteria)
 
 
 def find_compatible_fields(service, profile_id, report):
@@ -142,7 +143,7 @@ def find_compatible_fields(service, profile_id, report):
         # Add a compatible metric to the report.
         report["criteria"]["metricNames"].append(report_fields["metrics"][0]["name"])
 
-    print(
+    logger.info(
         "\nUpdated report criteria (with compatible fields):\n%s" % report["criteria"]
     )
 
@@ -164,7 +165,7 @@ def add_dimension_filters(service, profile_id, report):
         # Add a value as a filter to the report criteria.
         report["criteria"]["dimensionFilters"] = [values["items"]]
 
-    print(
+    logger.info(
         "\nUpdated report criteria (with valid dimension filters):\n%s"
         % report["criteria"]
     )
@@ -177,7 +178,9 @@ def insert_report_resource(service, profile_id, report):
         service.reports().insert(profileId=profile_id, body=report).execute()
     )
 
-    print("\nSuccessfully inserted new report with ID %s." % inserted_report["id"])
+    logger.info(
+        "\nSuccessfully inserted new report with ID %s." % inserted_report["id"]
+    )
 
     return inserted_report
 
