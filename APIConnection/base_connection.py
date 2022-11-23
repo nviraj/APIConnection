@@ -43,16 +43,11 @@ class BaseConnection(ABC):
                 )
             )
             tasks.append(t)
-            # tasks += [
-            #     self.get_report_df_for_account(a, start_date, end_date, dimensions)
-            #     for a in sub_accounts
-            # ]
         dfs = await asyncio.gather(*tasks)
         for task in tasks:
             task.cancel()
         hbt.cancel()
         for df in dfs:
-            # df = await self.get_report_df_for_account(account, start_date, end_date, dimensions)
             if not df.empty:
                 final_df = pd.concat([final_df, df])
         final_df.columns = [col.lower().replace(" ", "_") for col in final_df.columns]

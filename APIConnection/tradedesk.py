@@ -12,9 +12,6 @@ from pandas import DataFrame
 from APIConnection.base_connection import BaseConnection
 from APIConnection.logger import logger
 
-# from .exceptions import FBTimeOut
-
-# logging.basicConfig(filename="ttd.log", level=logging.DEBUG)
 logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
 TIMEOUT = 1000
