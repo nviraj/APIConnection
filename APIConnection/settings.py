@@ -1,4 +1,5 @@
-import os 
+import os
+
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 # Please provide facebook access token here
@@ -7,8 +8,8 @@ FB_ACCESS_TOKEN = ""
 # use either simple auth or access token. Please provide the access token here; otherwise
 # you need to run the program with simple auth
 TTD_AUTH_TOKEN = ""
-GG_OAUTH2_CRED = os.getenv("GG_OAUTH2_CRED", "/app-deploy/oauth2_gg.json")
-# GG_OAUTH2_CRED = "/home/quydx/datapal/datapal-compose/submodules/APIConnection/datapal-oauth2.json"
+# GG_OAUTH2_CRED = os.getenv("GG_OAUTH2_CRED", "/app-deploy/oauth2_gg.json")
+GG_OAUTH2_CRED = f"{dir_path}/../oauth2_gg.json"
 AD_INSIGHT_FIELD = f"{dir_path}/config/Facebook_fields_ads_insights.csv"
 
 # Path to client secrets
@@ -38,9 +39,9 @@ GOOGLE_ADS_FIELDS = [
 ]
 
 TWITTER_ACCOUNTS = ["kgs38", "61lmup", "8wmsmr", "pdvo6g", "18ce53wags1", "18ce53yyrf7"]
-TWITTER_CONSUMER_KEY = ''
-TWITTER_CONSUMER_SECRET = ''
-TWITTER_ACCESS_TOKEN = ''
-TWITTER_ACCESS_TOKEN_SECRET = ''
+TWITTER_CONSUMER_KEY = ""
+TWITTER_CONSUMER_SECRET = ""
+TWITTER_ACCESS_TOKEN = ""
+TWITTER_ACCESS_TOKEN_SECRET = ""
 
 GOOGLE_ANALYST_CRED = "path_to_the_credential_file"

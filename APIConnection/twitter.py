@@ -3,9 +3,8 @@ import datetime
 import errno
 import logging
 import os
-from abc import ABC
 from collections import defaultdict
-from typing import List, Dict
+from typing import Dict, List
 
 import pandas as pd
 import requests
@@ -13,25 +12,30 @@ import tweepy
 from twitter_ads import API_VERSION
 from twitter_ads.campaign import Campaign
 from twitter_ads.client import Client
-from twitter_ads.enum import METRIC_GROUP, GRANULARITY, PLACEMENT
+from twitter_ads.enum import GRANULARITY, METRIC_GROUP, PLACEMENT
 from twitter_ads.utils import split_list
 
 from APIConnection.base_connection import BaseConnection
 from APIConnection.exceptions import TwitterTimeout
+from APIConnection.logger import logger
 from APIConnection.settings import (
     TWITTER_ACCESS_TOKEN,
+    TWITTER_ACCESS_TOKEN_SECRET,
     TWITTER_CONSUMER_KEY,
     TWITTER_CONSUMER_SECRET,
-    TWITTER_ACCESS_TOKEN_SECRET,
 )
 
 # logging.basicConfig(filename="twitter.log", level=logging.DEBUG)
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
+logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
 TIMEOUT = 100
 API_URL = "https://ads-api.twitter.com"
 MAX_HANDLING_IDENTITIES = 20
-DEFAULT_METRIC_GROUPS = [METRIC_GROUP.ENGAGEMENT, METRIC_GROUP.BILLING, METRIC_GROUP.VIDEO]
+DEFAULT_METRIC_GROUPS = [
+    METRIC_GROUP.ENGAGEMENT,
+    METRIC_GROUP.BILLING,
+    METRIC_GROUP.VIDEO,
+]
 
 granularity = GRANULARITY.DAY
 placement = [PLACEMENT.ALL_ON_TWITTER, PLACEMENT.PUBLISHER_NETWORK]
@@ -41,11 +45,11 @@ class TwitterConnection(BaseConnection):
     """Wrapper class for fetching/parsing Twitter endpoints"""
 
     def __init__(
-            self,
-            key: str = TWITTER_CONSUMER_KEY,
-            secret: str = TWITTER_CONSUMER_SECRET,
-            token: str = TWITTER_ACCESS_TOKEN,
-            token_secret: str = TWITTER_ACCESS_TOKEN_SECRET
+        self,
+        key: str = TWITTER_CONSUMER_KEY,
+        secret: str = TWITTER_CONSUMER_SECRET,
+        token: str = TWITTER_ACCESS_TOKEN,
+        token_secret: str = TWITTER_ACCESS_TOKEN_SECRET,
     ):
         self.consumer_key = key
         self.secret = secret
@@ -53,16 +57,13 @@ class TwitterConnection(BaseConnection):
         self.token_secret = token_secret
         # initialize the client
         self.client = Client(
-            self.consumer_key,
-            self.secret,
-            self.token,
-            self.token_secret
+            self.consumer_key, self.secret, self.token, self.token_secret
         )
         self.accounts = self.get_sub_accounts()
         self.user_api = self.tw_user_api()
 
     def tw_user_api(self):
-        auth = tweepy.OAuthHandler(self.consumer_key, self.secret)
+        auth = tweepy.OAuth1UserHandler(self.consumer_key, self.secret)
         auth.set_access_token(self.token, self.token_secret)
         api = tweepy.API(auth)
         return api
@@ -76,7 +77,7 @@ class TwitterConnection(BaseConnection):
 
         if response.status_code != 200:
             raise Exception(
-                f"Cannot get a Bearer token (HTTP %d): %s"
+                "Cannot get a Bearer token (HTTP %d): %s"
                 % (response.status_code, response.text)
             )
 
@@ -85,16 +86,17 @@ class TwitterConnection(BaseConnection):
 
     @staticmethod
     def get_supported_metrics_group():
-        return [name for name in dir(METRIC_GROUP) if not name.startswith('_')]
+        return [name for name in dir(METRIC_GROUP) if not name.startswith("_")]
 
     def get_accounts(self):
         url = f"{API_URL}/{API_VERSION}/accounts/"
-        response = requests.get(url,
-                                headers={"Authorization": f"Bearer {self._get_bearer_token()}"})
+        response = requests.get(
+            url, headers={"Authorization": f"Bearer {self._get_bearer_token()}"}
+        )
 
         if response.status_code != 200:
             raise Exception(
-                f"Cannot get a Bearer token (HTTP %d): %s"
+                "Cannot get a Bearer token (HTTP %d): %s"
                 % (response.status_code, response.text)
             )
 
@@ -109,10 +111,13 @@ class TwitterConnection(BaseConnection):
         Returns: list of ad account id
 
         """
-        return [{"id": acc.id, "name": acc.name} for acc in list(self.client.accounts())]
+        return [
+            {"id": acc.id, "name": acc.name} for acc in list(self.client.accounts())
+        ]
 
-    def save_insight_ads_accounts_to_excel(self, start_date, end_date, metrics_group,
-                                           output_dir="./"):
+    def save_insight_ads_accounts_to_excel(
+        self, start_date, end_date, metrics_group, output_dir="./"
+    ):
         """Save insight ads data to excel files
 
         Args:
@@ -139,7 +144,9 @@ class TwitterConnection(BaseConnection):
                 raise e
 
     @staticmethod
-    def convert_analysis_data_to_df(campaign_data: Dict, analytics_data: Dict) -> pd.DataFrame:
+    def convert_analysis_data_to_df(
+        campaign_data: Dict, analytics_data: Dict
+    ) -> pd.DataFrame:
         res = []
         for data in analytics_data:
             row = {}
@@ -161,7 +168,7 @@ class TwitterConnection(BaseConnection):
                     elif campaign_data[id]["objective"] == "WEBSITE_CLICKS":
                         row["Objective"] = "Website clicks"
                 except Exception as e:
-                    print(e)
+                    logger.warning(e)
                     row["Objective"] = "Null"
 
                 row["Status"] = campaign_data[id]["status"]
@@ -174,9 +181,7 @@ class TwitterConnection(BaseConnection):
                 row["Impressions"] = (
                     sum(metrics["impressions"]) if metrics["impressions"] else 0
                 )
-                row["clicks"] = (
-                    sum(metrics["clicks"]) if metrics["clicks"] else 0
-                )
+                row["clicks"] = sum(metrics["clicks"]) if metrics["clicks"] else 0
                 row["Spend"] = (
                     sum(metrics["billed_charge_local_micro"])
                     if metrics["billed_charge_local_micro"]
@@ -196,7 +201,7 @@ class TwitterConnection(BaseConnection):
                     row["Result type"] = ""
 
                 row["Result rate"] = (
-                        100 * row["Results"] / (1.0e-6 + row["Impressions"])
+                    100 * row["Results"] / (1.0e-6 + row["Impressions"])
                 )
                 row["Result rate type"] = (
                     row["Result type"] + " rate" if "Result type" in row else ""
@@ -216,7 +221,7 @@ class TwitterConnection(BaseConnection):
         return df_insight
 
     def get_report_df_for_account(
-            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+        self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> pd.DataFrame:
         campaign_data, analytics_data = self.fetch_analytic_data_for_account(
             account, start_date, end_date, dimensions
@@ -226,7 +231,7 @@ class TwitterConnection(BaseConnection):
         return df
 
     def save_insight_ads_data_for_account_to_excel(
-            self, account_id, start_date, end_date, metrics_group, file_path
+        self, account_id, start_date, end_date, metrics_group, file_path
     ):
         """Save insight ads data to excel file
 
@@ -248,8 +253,7 @@ class TwitterConnection(BaseConnection):
         df_insight.to_excel(file_path, index=False, merge_cells=True)
 
     def fetch_analytic_data_for_account(
-            self, account_id: str, start_date: str, end_date: str,
-            metrics_group=None
+        self, account_id: str, start_date: str, end_date: str, metrics_group=None
     ):
         """Fetch insight ads data for an account account
 
@@ -295,7 +299,7 @@ class TwitterConnection(BaseConnection):
         analytics_data = []
         while start < end:
             for row in self._fetch_line_item_data(
-                    account, ids, start, start + datetime.timedelta(hours=24), metrics_group
+                account, ids, start, start + datetime.timedelta(hours=24), metrics_group
             ):
                 row["time_period"] = start
                 row["date_start"] = start.strftime("%Y-%m-%d")
@@ -342,15 +346,6 @@ class TwitterConnection(BaseConnection):
         data = {
             "login_account": user.name,
             "num_sub_account": len(self.accounts),
-            "login_account_id": user.id
+            "login_account_id": user.id,
         }
         return data
-
-
-if __name__ == "__main__":
-    tw = TwitterConnection()
-    # print(tw.get_sub_accounts())
-    data = tw.get_sub_accounts_report_df(
-        ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-    print(data[["clicks", "date_start", "campaign_id", "campaign_name"]])
-    # print(tw.get_supported_metrics_group())

@@ -5,10 +5,8 @@ import socket
 import sys
 import tempfile
 from contextlib import closing
-from datetime import datetime
-from datetime import timedelta
-from typing import Dict, Any
-from typing import List
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
 
 import httplib2
 import pandas as pd
@@ -23,7 +21,6 @@ from pandas import DataFrame
 from six.moves.urllib.request import urlopen
 
 from APIConnection.config import dv360_config
-from APIConnection.config.dv360_config import REPORT_METRICS
 from APIConnection.logger import get_logger
 from APIConnection.settings import GG_OAUTH2_CRED
 
@@ -47,14 +44,14 @@ class DV360:
     _REPORT_EXT = ".csv"
 
     def __init__(
-            self,
-            cred=GG_OAUTH2_CRED,
-            date_range="",
-            output=".",
-            frequency="",
-            report_window=None,
-            cached_credential=None,
-            allow_consent=True
+        self,
+        cred=GG_OAUTH2_CRED,
+        date_range="",
+        output=".",
+        frequency="",
+        report_window=None,
+        cached_credential=None,
+        allow_consent=True,
     ):
         if date_range:
             self.REPORT_DATE_RANGE = date_range
@@ -125,12 +122,13 @@ class DV360:
     def get_oauth2_authorize_url(self):
         """Steps through Service Account OAuth 2.0 flow to retrieve credentials."""
         flow = Flow.from_client_secrets_file(
-            self.CREDENTIALS_FILE, scopes=self._API_SCOPES,
-            redirect_uri="http://localhost:8000"
+            self.CREDENTIALS_FILE,
+            scopes=self._API_SCOPES,
+            redirect_uri="http://localhost:8000",
         )
         # flow.run_local_server()
 
-        print(flow.authorization_url())
+        logger.info(flow.authorization_url())
         return flow
 
     def get_authorization_from_code(self, code):
@@ -237,12 +235,12 @@ class DV360:
             raise e
 
     def get_report_df_for_account(
-            self, account: str, start_date: str, end_date: str, dimensions: List[str]
+        self, account: str, start_date: str, end_date: str, dimensions: List[str]
     ) -> DataFrame:
         return pd.DataFrame()
 
     def get_sub_accounts_report_df(
-            self, sub_accounts: List[str], date_range: str, dimensions: List[str]
+        self, sub_accounts: List[str], date_range: str, dimensions: List[str]
     ) -> DataFrame:
         report_definition = {
             "params": {
@@ -264,6 +262,7 @@ class DV360:
             )
             query_id = operation["queryId"]
             if query_id:
+
                 @retry.Retry(
                     predicate=retry.if_exception_type(Exception),
                     initial=5,
@@ -281,16 +280,18 @@ class DV360:
                 query = check_get_query_completion(query_request)
                 try:
                     if self.is_in_report_window(
-                            query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                        query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
                     ):
                         report_url = query["metadata"][
                             "googleCloudStoragePathForLatestReport"
                         ]
                         report_df = pd.read_csv(report_url)
                         report_df = report_df[
-                            report_df.Date.str.match(r'\d{4}/\d{2}/\d{2}', na=False)
+                            report_df.Date.str.match(r"\d{4}/\d{2}/\d{2}", na=False)
                         ]
-                        report_df.columns = [c.lower().replace(" ", "_") for c in report_df.columns]
+                        report_df.columns = [
+                            c.lower().replace(" ", "_") for c in report_df.columns
+                        ]
                         report_df = report_df.rename(columns={"date": "date_start"})
                         report_df["date_start"] = report_df["date_start"].apply(
                             lambda d: d.replace("/", "-")
@@ -341,7 +342,7 @@ class DV360:
                 os.system(f"mkdir -p {self.REPORT_OUTPUT_DIR}")
                 # If it is recent enough...
                 if self.is_in_report_window(
-                        query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
+                    query["metadata"]["latestReportRunTimeMs"], self.REPORT_WINDOW
                 ):
                     # Grab the report and write contents to a file.
                     report_url = query["metadata"][
@@ -381,15 +382,12 @@ class DV360:
         Returns:
           User information as a dict.
         """
-        user_info_service = build(
-            serviceName='oauth2', version='v2',
-            http=self.http
-        )
+        user_info_service = build(serviceName="oauth2", version="v2", http=self.http)
         user_info = None
         try:
             user_info = user_info_service.userinfo().get().execute()
         except Exception as e:
-            logging.error('An error occurred: %s', e)
+            logging.error("An error occurred: %s", e)
         return user_info if user_info else {}
 
     def extract_connection_info(self) -> Dict[str, Any]:
@@ -397,45 +395,6 @@ class DV360:
         data = {
             "login_account": info.get("email", ""),
             "num_sub_account": 0,
-            "login_account_id": info.get("id", "")
+            "login_account_id": info.get("id", ""),
         }
         return data
-
-
-if __name__ == "__main__":
-    # Retrieve command line arguments.
-    # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    with open("credential_cached_storage/cached_auth.dat", "r") as f:
-        content = f.read()
-    # print(content)
-    dv360 = DV360(
-        frequency="ONE_TIME",
-        date_range="CURRENT_DAY",
-        report_window=24,
-        cached_credential=content
-    )
-
-    # LIST QUERIES, USERS
-    # pprint(dbm_service_object)
-    # pprint(dv360.dbm_service.queries().listqueries().execute())
-    # pprint(dv360.dv360_service.users().list().execute())
-
-    # GET REPORTS
-    print(dv360.extract_connection_info())
-    df = dv360.get_sub_accounts_report_df(
-        [], "CURRENT_DAY", REPORT_METRICS
-    )
-    print(df)
-    print(df[["clicks", "impressions", "spend"]])
-    # df.to_csv("dv360.csv")
-
-    # query_id = dv360.create_report()
-    # pprint(query_id)
-    # query_id = 1000669689
-    # pprint(dv360.dbm_service.queries().getquery(queryId=query_id).execute())
-    # df = dv360.dbm_service.get_full_report_df(query_id)
-    # df = pd.read_csv(
-    #     "/home/quydx/datapal/datapal-compose/submodules/APIConnection/APIConnection/2022_09_17-172722.csv"
-    # )
-    # print(df)
-    # print(df.info())
