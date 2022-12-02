@@ -1,6 +1,6 @@
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pandas as pd
 from pandas import DataFrame
@@ -30,16 +30,26 @@ class BaseConnection(ABC):
         pass
 
     async def get_sub_accounts_report_df(
-        self, sub_accounts: List[str], start_date, end_date, dimensions
+        self,
+        sub_accounts: List[str],
+        start_date,
+        end_date,
+        dimensions,
+        account_dimensions: Optional[Dict] = {},
     ) -> DataFrame:
         final_df = pd.DataFrame()
         tasks = []
         hbt = asyncio.create_task(heartbeat())
         for account in sub_accounts:
             logger.debug(f"Process {account}")
+            filtered_dimensions = (
+                account_dimensions[account]
+                if account in account_dimensions
+                else dimensions
+            )
             t = asyncio.create_task(
                 self.get_report_df_for_account(
-                    account, start_date, end_date, dimensions
+                    account, start_date, end_date, filtered_dimensions
                 )
             )
             tasks.append(t)
