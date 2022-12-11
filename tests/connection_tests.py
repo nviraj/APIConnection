@@ -111,11 +111,11 @@ def test_trade_desk():
 def test_dv360():
     # Retrieve command line arguments.
     # flags = samples_util.get_arguments(sys.argv, __doc__, parents=[argparser])
-    with open("credential_cached_storage/cached_auth.dat", "r") as f:
+    with open("../APIConnection/credential_cached_storage/cached_auth.dat", "r") as f:
         content = f.read()
     dv360 = DV360(
         frequency="ONE_TIME",
-        date_range="CURRENT_DAY",
+        date_range="LAST_7_DAYS",
         report_window=24,
         cached_credential=content
     )
@@ -128,11 +128,11 @@ def test_dv360():
     # GET REPORTS
     logger.info(dv360.extract_connection_info())
     df = dv360.get_sub_accounts_report_df(
-        [], "CURRENT_DAY", REPORT_METRICS
+        [], "LAST_60_DAYS", REPORT_METRICS
     )
     logger.info(df)
-    logger.info(df[["clicks", "impressions", "spend"]])
-    # df.to_csv("dv360.csv")
+    # logger.info(df[["clicks", "impressions", "spend"]])
+    df.to_csv("dv360.csv")
 
     # query_id = dv360.create_report()
     # plogger.info(query_id)
@@ -147,10 +147,17 @@ def test_dv360():
 
 
 def test_tw():
-    if __name__ == "__main__":
-        tw = TwitterConnection()
-        # logger.info(tw.get_sub_accounts())
-        data = tw.get_sub_accounts_report_df(
-            ["kgs38", "61lmup"], "2022-08-15", "2022-08-20", ["ENGAGEMENT", "BILLING"])
-        logger.info(data[["clicks", "date_start", "campaign_id", "campaign_name"]])
-        # logger.info(tw.get_supported_metrics_group())
+    tw = TwitterConnection()
+    # logger.info(tw.get_sub_accounts())
+    # data = tw.get_sub_accounts_report_df(
+    #     ["kgs38", "61lmup"], "2022-08-01", "2022-08-05", ["ENGAGEMENT", "BILLING"])
+    data = tw.get_report_df_for_account(
+        "kgs38", "2022-08-01", "2022-08-05", ["ENGAGEMENT", "BILLING"]
+    )
+    # logger.info(data[["clicks", "date_start", "campaign_id", "campaign_name"]])
+    # logger.info(tw.get_supported_metrics_group())
+    data.to_csv("sample_tw.csv")
+
+
+if __name__ == "__main__":
+    test_dv360()
